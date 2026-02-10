@@ -19,7 +19,7 @@ class TestPanel(framed.Panel):
 
 
 def main(stdscr: curses.window):
-    app = framed.Framed(stdscr)
+    app = framed.App(stdscr)
     manager = app.stack()
     app.new_panel(TestPanel)
     manager.set_active_panel(0)
