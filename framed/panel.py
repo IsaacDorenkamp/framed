@@ -4,10 +4,9 @@ import curses
 from .layout import Layout
 from .layout.fixed import FixedLayout
 from .layout.grid import GridLayout
+from .manager import Manager
 from .struct import rect2, vec2
 from .widgets import Widget
-
-from . import _log
 
 
 class Panel(metaclass=ABCMeta):
@@ -18,13 +17,15 @@ class Panel(metaclass=ABCMeta):
     __position: vec2
     __layout: Layout
     __valid: bool
+    __owner: Manager | None
 
-    def __init__(self, region: rect2):
+    def __init__(self, region: rect2, owner: Manager | None = None):
         self.__window = curses.newwin(*region.curses)
         self.__widgets = []
         self.__size, self.__position = region.decompose()
         self.__layout = FixedLayout()
         self.__valid = False
+        self.__owner = owner
 
     def add(self, widget: Widget):
         self.__widgets.append(widget)
@@ -54,6 +55,10 @@ class Panel(metaclass=ABCMeta):
         self.__valid = False
 
     def __validate(self):
+        # FIX: sometimes, a window may be so shaped that, no
+        # matter the order of resizing and moving, a curses
+        # error will always occur. Need to add logic to
+        # mitigate this (perhaps resize to 1, 1 every time?)
         self.__window.resize(*self.__size)
         self.__window.mvwin(*self.__position)
         self.arrange()
@@ -84,6 +89,12 @@ class Panel(metaclass=ABCMeta):
 
         self.__layout.reset()
         return self.__layout
+
+    def request_update(self) -> bool:
+        if self.__owner is not None:
+            return self.__owner.request_update(self)
+
+        return False
 
     @property
     def size(self) -> vec2:

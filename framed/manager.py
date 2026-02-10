@@ -77,6 +77,18 @@ class Manager(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def request_update(self, panel: Panel) -> bool:
+        """
+        Determines whether a panel may perform updates to
+        the screen. If a panel is not visible, it should not
+        be able to perform updates to the screen, so this
+        should return False in that case. If a panel is
+        visible, however, this method should return True to
+        permit the panel to perform a visual update.
+        """
+        raise NotImplementedError()
+
 
 class StackManager(Manager):
     __panels: list[Panel]
@@ -123,4 +135,10 @@ class StackManager(Manager):
     def set_size(self, size: vec2):
         for panel in self.__panels:
             panel.set_size(size)
+
+    def request_update(self, panel: Panel) -> bool:
+        if self.__active == -1:
+            return False
+
+        return panel == self.__panels[self.__active]
 

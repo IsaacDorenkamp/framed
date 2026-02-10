@@ -2,8 +2,6 @@ import curses
 
 from .widget import Widget
 
-from .. import _log
-
 
 class Label(Widget):
     _text: str

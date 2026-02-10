@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 import curses
+import functools
 
+from ..panel import Panel
 from ..struct import vec2
 
 
@@ -11,10 +13,12 @@ class WidgetError(Exception):
 class Widget(metaclass=ABCMeta):
     __window: curses.window | None
     __size: vec2
+    __parent: Panel | Widget | None
 
     def __init__(self):
         self.__window = None
         self.__size = vec2()
+        self.__parent = None
 
     def enwindow(self, window: curses.window):
         if self.__window is not None:
@@ -58,4 +62,18 @@ class Widget(metaclass=ABCMeta):
 
     def set_size(self, size: vec2):
         self.__size = size
+
+    def request_update(self) -> bool:
+        if self.__parent is not None:
+            return self.__parent.request_update()
+
+        return False
+            
+
+    def invalidate(self, method):
+        @functools.wraps(method)
+        def with_invalidate(*args, **kwargs):
+            method(*args, **kwargs)
+
+        return with_invalidate
 
