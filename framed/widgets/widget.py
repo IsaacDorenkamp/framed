@@ -68,7 +68,12 @@ class Widget(metaclass=ABCMeta):
             return self.__parent.request_update()
 
         return False
-            
+
+    def _adopt(self, parent: Panel | Widget):
+        self.__parent = parent
+
+    def _orphan(self):
+        self.__parent = None
 
     def invalidate(self, method):
         @functools.wraps(method)

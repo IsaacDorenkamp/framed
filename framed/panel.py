@@ -28,6 +28,7 @@ class Panel(metaclass=ABCMeta):
         self.__owner = owner
 
     def add(self, widget: Widget):
+        widget._adopt(self)
         self.__widgets.append(widget)
 
     def reconfigure(self):
