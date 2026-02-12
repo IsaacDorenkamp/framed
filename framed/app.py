@@ -36,7 +36,7 @@ class App:
     def multiplex(self, top_level_split_direction: Direction = Direction.horizontal) -> MultiplexManager:
         if self.__manager is not None:
             raise AppError("Manager already assigned!")
-        self.__manager = MultiplexManager(top_level_split_direction)
+        self.__manager = MultiplexManager(self.__stdscr, top_level_split_direction)
         return self.__manager
 
     def new_panel(self, panel_type: type[PanelType], *mgr_args, **mgr_kwargs):
@@ -48,6 +48,7 @@ class App:
 
     def run(self):
         _log.info("Running application")
+        _log.debug("stdscr size: %s" % str(self.__size))
         curses.set_escdelay(25)
         curses.raw()
         self.__stdscr.keypad(True)

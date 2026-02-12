@@ -1,8 +1,9 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 import curses
 import functools
+import typing
 
-from ..panel import Panel
 from ..struct import vec2
 
 
@@ -82,3 +83,6 @@ class Widget(metaclass=ABCMeta):
 
         return with_invalidate
 
+
+if typing.TYPE_CHECKING:
+    from ..panel import Panel

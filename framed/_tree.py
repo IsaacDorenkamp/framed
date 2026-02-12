@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import typing
 
@@ -16,7 +17,7 @@ class _node(typing.Generic[T]):
 
 
 def _traverse(node: _node[T], path: tuple[int, ...] = ()):
-    yield path, node.value
+    yield path, len(node.children) == 0, node.value
     for index, child in enumerate(node.children):
         yield from _traverse(child, path=path + (index,))
 
@@ -27,7 +28,7 @@ class _tree(typing.Generic[T]):
     def __init__(self, root: T):
         self.__root = _node(root, [])
 
-    def __iter__(self) -> typing.Generator[tuple[tuple[int, ...], T], None, None]:
+    def __iter__(self) -> typing.Generator[tuple[tuple[int, ...], bool, T], None, None]:
         yield from _traverse(self.__root)
 
     def insert(self, path: tuple[int, ...], value: T, at: int = -1) -> tuple[int, ...]:

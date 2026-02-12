@@ -1,12 +1,15 @@
+from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 import curses
+import typing
 
 from .layout import Layout
 from .layout.fixed import FixedLayout
 from .layout.grid import GridLayout
-from .manager import Manager
 from .struct import rect2, vec2
 from .widgets import Widget
+
+from . import _log
 
 
 class Panel(metaclass=ABCMeta):
@@ -60,6 +63,8 @@ class Panel(metaclass=ABCMeta):
         # matter the order of resizing and moving, a curses
         # error will always occur. Need to add logic to
         # mitigate this (perhaps resize to 1, 1 every time?)
+        _log.debug("size: %s" % str(self.__size))
+        _log.debug("position: %s" % str(self.__position))
         self.__window.resize(*self.__size)
         self.__window.mvwin(*self.__position)
         self.arrange()
@@ -105,3 +110,6 @@ class Panel(metaclass=ABCMeta):
     def position(self) -> vec2:
         return self.__position
 
+
+if typing.TYPE_CHECKING:
+    from .manager import Manager

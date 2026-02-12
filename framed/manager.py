@@ -7,6 +7,7 @@ import math
 from .panel import Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
+from . import _log
 
 
 class ManagerError(Exception):
@@ -62,9 +63,11 @@ class Manager(metaclass=ABCMeta):
         raise NotImplementedError()
 
     def refresh(self):
+        self._stdscr.clear()
+        self.decorate()
         self._stdscr.noutrefresh()
         self.show()
-        self.decorate()
+        self._stdscr.noutrefresh()
         curses.doupdate()
 
     @abstractmethod
@@ -157,16 +160,20 @@ class MultiplexManager(Manager):
     __panels: list[Panel]
     __visible: list[Panel]
 
-    def __init__(self, top_level_split_direction: Direction = Direction.horizontal):
+    def __init__(self, stdscr: curses.window, top_level_split_direction: Direction = Direction.horizontal):
+        super().__init__(stdscr)
         self.__splits = _tree(Split(1.0, -1, rect2(0, 0, 0, 0), top_level_split_direction))
         self.__panels = []
+        self.__visible = []
 
     # --- Manager method implementations ---
     def add_panel(self, panel: Panel, split_path: tuple[int, ...]):
         self.__panels.append(panel)
         try:
-            split = self.__splits.get(split_path)
-            split.panel_index = len(self.__panels) - 1
+            split = self.__splits.get_node(split_path)
+            if split.children:
+                raise ManagerError("Split '%s' is not a bottom-level split!" % str(split_path))
+            split.value.panel_index = len(self.__panels) - 1
         except TreeError:
             raise ManagerError("No split with path '%s'" % str(split_path))
 
@@ -196,6 +203,7 @@ class MultiplexManager(Manager):
         while used_space < directional_space:
             sizes[distribute_index] += 1
             distribute_index = (distribute_index + 1) % len(sizes)
+            used_space += 1
 
         consumed_space = 0
         for index, child_node in enumerate(split_node.children):
@@ -222,19 +230,113 @@ class MultiplexManager(Manager):
             panel.render()
 
     def decorate(self):
-        # TODO: Draw borders!
-        pass
+        root = self.__splits.root
+        self.__decorate(root)
+
+    def __decorate(self, split_node: _node[Split]):
+        split = split_node.value
+        for index, child_node in enumerate(split_node.children):
+            child = child_node.value
+            if index > 0:
+                # draw border
+                if split.direction == Direction.horizontal:
+                    for y in range(child.region.h):
+                        self._stdscr.move(child.region.y + y, child.region.x - 1)
+                        self._stdscr.addch("\u2502")
+                else:
+                    self._stdscr.move(child.region.y - 1, child.region.x)
+                    self._stdscr.addnstr("\u2500" * child.region.w, child.region.w)
+
+        self._stdscr.noutrefresh()
+
+        for child_node in split_node.children:
+            child = child_node.value
+            self.__decorate(child_node)
+            self.__connect_borders(child.region, split.direction)
+
+    def __connect_borders(self, region: rect2, parent_direction: Direction):
+        # TODO: Support non-unicode systems
+        max_y, max_x = self._stdscr.getmaxyx()
+        if parent_direction == Direction.horizontal:
+            y, x = region.y - 1, region.x - 1
+            if y >= 0:
+                existing_raw = self._stdscr.inch(y, x)
+                if existing_raw != 0xffffffff:
+                    existing = existing_raw & 0xffff
+                    if existing == 0x2534:
+                        updated = 0x253C
+                    elif existing == 0x2500:
+                        updated = 0x252C
+                    else:
+                        updated = -1
+
+                    if updated != -1:
+                        self._stdscr.move(y, x)
+                        self._stdscr.addch(chr(updated))
+
+            y = region.y + region.h  # 1 below the bottom
+            if y < max_y:
+                existing_raw = self._stdscr.inch(y, x)
+                if existing_raw != 0xffffffff:
+                    existing = existing_raw & 0xffff
+                    if existing == 0x252C:
+                        updated = 0x253C
+                    elif existing == 0x2500:
+                        updated = 0x2534
+                    else:
+                        updated = -1
+
+                    if updated != -1:
+                        self._stdscr.move(y, x)
+                        self._stdscr.addch(chr(updated))
+        else:
+            y, x = region.y - 1, region.x - 1
+            if x >= 0:
+                existing_raw = self._stdscr.inch(y, x)
+                if existing_raw != 0xffffffff:
+                    existing = existing_raw & 0xffff
+                    if existing == 0x2524:
+                        updated = 0x253C
+                    elif existing == 0x2502:
+                        updated = 0x251C
+                    else:
+                        updated = -1
+
+                    if updated != -1:
+                        self._stdscr.move(y, x)
+                        self._stdscr.addch(chr(updated))
+
+            x = region.x + region.w
+            if x < max_x:
+                existing_raw = self._stdscr.inch(y, x)
+                if existing_raw != 0xffffffff:
+                    existing = existing_raw & 0xffff
+                    if existing == 0x251C:
+                        updated = 0x253C
+                    elif existing == 0x2502:
+                        updated = 0x2524
+                    else:
+                        updated = -1
+
+                    if updated != -1:
+                        self._stdscr.move(y, x)
+                        self._stdscr.addch(chr(updated))
 
     def request_update(self, panel: Panel) -> bool:
         return panel in self.__visible
 
     # --- MultiplexManager-specific methods ---
-    def split(self, path: tuple[int, ...] | None = None, direction: Direction = Direction.horizontal) -> tuple[int, ...]:
+    def split(self, parts: int, path: tuple[int, ...] | None = None, direction: Direction = Direction.horizontal) -> list[tuple[int, ...]]:
         if path is None:
             path = ()
 
         node = self.__splits.get_node(path)
+        if node.children:
+            raise ManagerError("'%s' is not a bottom-level split!" % str(path))
         node.value.direction = direction
-        portion = 1.0 / (len(node.children) + 1)
-        return self.__splits.insert(path, Split(portion, -1, rect2(), direction))
+        portion = 1.0 / parts
+        splits = []
+        for _ in range(parts):
+            splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
+        return splits
 
