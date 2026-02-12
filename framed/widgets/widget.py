@@ -57,6 +57,11 @@ class Widget(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    def _repaint(self):
+        self._window.erase()
+        self.render()
+        self._window.refresh()
+
     @property
     def size(self) -> vec2:
         return self.__size
@@ -76,13 +81,14 @@ class Widget(metaclass=ABCMeta):
     def _orphan(self):
         self.__parent = None
 
-    def invalidate(self, method):
-        @functools.wraps(method)
-        def with_invalidate(*args, **kwargs):
-            method(*args, **kwargs)
+def invalidate(method: typing.Callable[..., bool]):
+    @functools.wraps(method)
+    def with_invalidate(self, *args, **kwargs):
+        should_invalidate = method(self, *args, **kwargs)
+        if should_invalidate and self.windowed is not None and self.request_update():
+            self._repaint()
 
-        return with_invalidate
-
+    return with_invalidate
 
 if typing.TYPE_CHECKING:
     from ..panel import Panel

@@ -1,6 +1,6 @@
 import curses
 
-from .widget import Widget
+from .widget import Widget, invalidate
 
 
 class Label(Widget):
@@ -8,6 +8,14 @@ class Label(Widget):
     def __init__(self, text: str):
         super().__init__()
         self._text = text
+
+    @invalidate
+    def set_text(self, text) -> bool:
+        if text != self._text:
+            self._text = text
+            return True
+
+        return False
 
     def render(self):
         window = self._window

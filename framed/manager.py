@@ -140,6 +140,7 @@ class StackManager(Manager):
         self.__active = active_index
         if self.__showing:
             self.__display()
+            self.refresh()
 
 
 class Direction(enum.IntEnum):

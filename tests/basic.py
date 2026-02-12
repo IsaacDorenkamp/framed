@@ -9,32 +9,49 @@ import framed.widgets
 class TestPanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.labels = []
-        for i in range(9):
-            label = framed.widgets.Label(f"Label {i + 1}")
-            self.labels.append(label)
-            self.add(label)
+        self.label = framed.widgets.Label("Label")
+        self.add(self.label)
+
+    def set_label_text(self, text: str):
+        self.label.set_text(text)
 
     def arrange(self):
-        grid = self.grid()
-        for index, label in enumerate(self.labels):
-            grid.add(label, index // 3, index % 3)
+        fixed = self.fixed()
+        fixed.add(self.label, 0, 0, 1, 40)
 
 
 def main(stdscr: curses.window):
     framed.palette.setup()
     app = framed.App(stdscr)
-    manager = app.multiplex()
-    split = manager.split(3)
-    split2 = manager.split(4, split[1], direction=framed.Direction.vertical)
-    manager.split(3, split2[3], direction=framed.Direction.horizontal)
-    app.new_panel(TestPanel, split_path=split2[1])
+    manager = app.stack()
+
+    first = app.new_panel(TestPanel)
+    first.set_label_text("First Page")
+
+    second = app.new_panel(TestPanel)
+    second.set_label_text("Second Page")
+
+    manager.set_active_panel(0)
+
+    def handle_input(ch: int):
+        if ch == curses.KEY_F1:
+            manager.set_active_panel(0)
+        elif ch == curses.KEY_F2:
+            manager.set_active_panel(1)
+        elif ch == curses.KEY_F3:
+            first.set_label_text("Something else")
+        elif ch == curses.KEY_F4:
+            second.set_label_text("Something else 2")
+        elif ch == 3:
+            app.quit()
+
+    app.set_control_handler(handle_input)
+
     app.run()
 
 
 if __name__ == '__main__':
     logging.basicConfig(format="[%(levelname)s %(name)s] %(message)s", level=logging.DEBUG, handlers=[logging.FileHandler("/tmp/pylog", mode="w")])
-    logging.info("Alive!")
     curses.wrapper(main)
 
 
