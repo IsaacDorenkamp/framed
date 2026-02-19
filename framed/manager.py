@@ -336,22 +336,6 @@ class MultiplexManager(Manager):
             splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
         return splits
 
-<<<<<<< HEAD
-    def set_split_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
-        split_node = self.__splits.get_node(path)
-        if not split_node.children:
-            raise ManagerError("'%s' is a bottom-level split!" % str(path))
-
-        if len(proportions) != len(split_node.children):
-            raise ManagerError("%d proportions given, but split has %d children" % (len(proportions), len(split_node.children)))
-
-        if sum(proportions) > 1:
-            raise ValueError("proportions must have a sum no greater than 1.0")
-
-        for (child_node, portion) in zip(split_node.children, proportions):
-            child = child_node.value
-            child.portion = portion
-=======
     def set_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
         node = self.__splits.get_node(path)
         if not node.children:
@@ -365,5 +349,4 @@ class MultiplexManager(Manager):
 
         for child, portion in zip(node.children, proportions):
             child.value.portion = portion
->>>>>>> 21b4f7d0ee4cebd86491028faceee0b84fbd827a
 
