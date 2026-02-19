@@ -20,6 +20,7 @@ class App:
 
     __running: bool
     __manager: Manager | None
+    __can_ctrl_c: bool
     __control_handler: typing.Callable[[int], typing.Any] | None
 
     def __init__(self, stdscr: curses.window):
@@ -27,6 +28,7 @@ class App:
         self.__size = vec2(*stdscr.getmaxyx())
         self.__running = True
         self.__manager = None
+        self.__can_ctrl_c = True
         self.__control_handler = None
 
     # --- Layout Configuration Methods ---
@@ -70,6 +72,8 @@ class App:
             ch = self.__stdscr.getch()
             if ch == -1:
                 continue
+            elif ch == 3 and self.__can_ctrl_c:
+                self.quit()
             elif ch == curses.KEY_RESIZE:
                 if self.__manager is not None:
                     self.__manager.arrange(vec2(*self.__stdscr.getmaxyx()))
@@ -79,4 +83,7 @@ class App:
 
     def quit(self):
         self.__running = False
+
+    def ignore_ctrl_c(self, ignore: bool = True):
+        self.__can_ctrl_c = not ignore
 

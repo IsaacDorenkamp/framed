@@ -255,73 +255,55 @@ class MultiplexManager(Manager):
             self.__decorate(child_node)
             self.__connect_borders(child.region, split.direction)
 
+    def __update_char(self, y: int, x: int, replace_map: dict[int, int]):
+        existing_raw = self._stdscr.inch(y, x)
+        if existing_raw == 0xffffffff:
+            return
+
+        existing = existing_raw & 0xffff
+        updated = replace_map.get(existing)
+        if updated is not None:
+            self._stdscr.move(y, x)
+            self._stdscr.addch(chr(updated))
+
     def __connect_borders(self, region: rect2, parent_direction: Direction):
         # TODO: Support non-unicode systems
         max_y, max_x = self._stdscr.getmaxyx()
         if parent_direction == Direction.horizontal:
             y, x = region.y - 1, region.x - 1
             if y >= 0:
-                existing_raw = self._stdscr.inch(y, x)
-                if existing_raw != 0xffffffff:
-                    existing = existing_raw & 0xffff
-                    if existing == 0x2534:
-                        updated = 0x253C
-                    elif existing == 0x2500:
-                        updated = 0x252C
-                    else:
-                        updated = -1
-
-                    if updated != -1:
-                        self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                self.__update_char(y, x, { 0x2534: 0x253C, 0x2500: 0x252C })
 
             y = region.y + region.h  # 1 below the bottom
             if y < max_y:
-                existing_raw = self._stdscr.inch(y, x)
-                if existing_raw != 0xffffffff:
-                    existing = existing_raw & 0xffff
-                    if existing == 0x252C:
-                        updated = 0x253C
-                    elif existing == 0x2500:
-                        updated = 0x2534
-                    else:
-                        updated = -1
-
-                    if updated != -1:
-                        self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                self.__update_char(y, x, { 0x252C: 0x253C, 0x2500: 0x2534 })
         else:
             y, x = region.y - 1, region.x - 1
             if x >= 0:
-                existing_raw = self._stdscr.inch(y, x)
-                if existing_raw != 0xffffffff:
-                    existing = existing_raw & 0xffff
-                    if existing == 0x2524:
-                        updated = 0x253C
-                    elif existing == 0x2502:
-                        updated = 0x251C
-                    else:
-                        updated = -1
-
-                    if updated != -1:
-                        self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                self.__update_char(y, x, { 0x2524: 0x253C, 0x2502: 0x251C })
 
             x = region.x + region.w
             if x < max_x:
-                existing_raw = self._stdscr.inch(y, x)
-                if existing_raw != 0xffffffff:
-                    existing = existing_raw & 0xffff
-                    if existing == 0x251C:
-                        updated = 0x253C
-                    elif existing == 0x2502:
-                        updated = 0x2524
-                    else:
-                        updated = -1
+                self.__update_char(y, x, { 0x251C: 0x253C, 0x2502: 0x2524 })
 
-                    if updated != -1:
-                        self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+    def __disconnect_borders(self, region: rect2, parent_direction: Direction):
+        max_y, max_x = self._stdscr.getmaxyx()
+        if parent_direction == Direction.horizontal:
+            y, x = region.y - 1, region.x - 1
+            if y >= 0:
+                self.__update_char(y, x, { 0x253C: 0x2534, 0x252C: 0x2500 })
+
+            y = region.y + region.h
+            if y < max_y:
+                self.__update_char(y, x, { 0x253C: 0x252C, 0x2534: 0x2500 })
+        else:
+            y, x = region.y - 1, region.x - 1
+            if x >= 0:
+                self.__update_char(y, x, { 0x253C: 0x2524, 0x251C: 0x2502 })
+
+            x = region.x + region.w
+            if x < max_x:
+                self.__update_char(y, x, { 0x253C: 0x251C, 0x2524: 0x2502 })
 
     def request_update(self, panel: Panel) -> bool:
         return panel in self.__visible
@@ -340,4 +322,19 @@ class MultiplexManager(Manager):
         for _ in range(parts):
             splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
         return splits
+
+    def set_split_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
+        split_node = self.__splits.get_node(path)
+        if not split_node.children:
+            raise ManagerError("'%s' is a bottom-level split!" % str(path))
+
+        if len(proportions) != len(split_node.children):
+            raise ManagerError("%d proportions given, but split has %d children" % (len(proportions), len(split_node.children)))
+
+        if sum(proportions) > 1:
+            raise ValueError("proportions must have a sum no greater than 1.0")
+
+        for (child_node, portion) in zip(split_node.children, proportions):
+            child = child_node.value
+            child.portion = portion
 
