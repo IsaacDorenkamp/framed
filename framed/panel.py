@@ -63,8 +63,6 @@ class Panel(metaclass=ABCMeta):
         # matter the order of resizing and moving, a curses
         # error will always occur. Need to add logic to
         # mitigate this (perhaps resize to 1, 1 every time?)
-        _log.debug("size: %s" % str(self.__size))
-        _log.debug("position: %s" % str(self.__position))
         self.__window.resize(*self.__size)
         self.__window.mvwin(*self.__position)
         self.arrange()

@@ -200,11 +200,24 @@ class MultiplexManager(Manager):
             sizes[index] = child_space
             used_space += child_space
 
+        # if we have remaining space, fill it
         distribute_index = 0
         while used_space < directional_space:
             sizes[distribute_index] += 1
-            distribute_index = (distribute_index + 1) % len(sizes)
             used_space += 1
+            distribute_index = (distribute_index + 1) % len(sizes)
+
+        # if we overshot (such as if some children had a portion of 0),
+        # we will trim down as much as we can. We want to permit 0-weight
+        # children to allow single-line (or column) regions that can be
+        # used for standard purposes like title bars, command bars, status
+        # lines, etc.
+        distribute_index = 0
+        while (used_space > directional_space) and any(size > 1 for size in sizes):
+            if sizes[distribute_index] > 1:
+                sizes[distribute_index] -= 1
+                used_space -= 1
+            distribute_index = (distribute_index + 1) % len(sizes)
 
         consumed_space = 0
         for index, child_node in enumerate(split_node.children):
@@ -273,7 +286,7 @@ class MultiplexManager(Manager):
 
                     if updated != -1:
                         self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                        self._stdscr.addch(chr(updated), curses.A_DIM)
 
             y = region.y + region.h  # 1 below the bottom
             if y < max_y:
@@ -289,7 +302,7 @@ class MultiplexManager(Manager):
 
                     if updated != -1:
                         self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                        self._stdscr.addch(chr(updated), curses.A_DIM)
         else:
             y, x = region.y - 1, region.x - 1
             if x >= 0:
@@ -305,7 +318,7 @@ class MultiplexManager(Manager):
 
                     if updated != -1:
                         self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                        self._stdscr.addch(chr(updated), curses.A_DIM)
 
             x = region.x + region.w
             if x < max_x:
@@ -321,7 +334,7 @@ class MultiplexManager(Manager):
 
                     if updated != -1:
                         self._stdscr.move(y, x)
-                        self._stdscr.addch(chr(updated))
+                        self._stdscr.addch(chr(updated), curses.A_DIM)
 
     def request_update(self, panel: Panel) -> bool:
         return panel in self.__visible
@@ -340,4 +353,18 @@ class MultiplexManager(Manager):
         for _ in range(parts):
             splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
         return splits
+
+    def set_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
+        node = self.__splits.get_node(path)
+        if not node.children:
+            raise ManagerError("'%s' is a bottom-level split!" % str(path))
+
+        if len(node.children) != len(proportions):
+            raise ManagerError("Needed %d proportions, got %d instead" % (len(node.children), len(proportions)))
+
+        if sum(proportions) > 1:
+            raise ManagerError("Sum of proportions must not exceed 1!")
+
+        for child, portion in zip(node.children, proportions):
+            child.value.portion = portion
 

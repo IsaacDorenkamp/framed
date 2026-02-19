@@ -5,21 +5,33 @@ import functools
 import typing
 
 from ..struct import vec2
+from .. import palette
+from .. import _log
 
 
 class WidgetError(Exception):
     pass
 
 
+class InvalidateMethod(typing.Protocol):
+    def __call__(self, *args, **kwargs) -> bool: ...
+
+
 class Widget(metaclass=ABCMeta):
     __window: curses.window | None
     __size: vec2
     __parent: Panel | Widget | None
+    __background: palette.ColorInfo
+    __foreground: palette.ColorInfo
+    __color_attr: int
 
     def __init__(self):
         self.__window = None
         self.__size = vec2()
         self.__parent = None
+        self.__background = palette.default_color_info
+        self.__foreground = palette.default_color_info
+        self.__color_attr = palette.color_pair(self.__background[0], self.__foreground[0])
 
     def enwindow(self, window: curses.window):
         if self.__window is not None:
@@ -81,12 +93,49 @@ class Widget(metaclass=ABCMeta):
     def _orphan(self):
         self.__parent = None
 
-def invalidate(method: typing.Callable[..., bool]):
+    # NOTE: While the default implementation simply calls window.bkgd()
+    # this method is intended to allow implementation by subclasses to
+    # more efficiently update the window's color if possible.
+    def _update_colors(self):
+        self._window.bkgd(self.color_attr)
+        self._window.refresh()
+
+    @property
+    def background(self) -> str:
+        return self.__background[0]
+
+    @background.setter
+    def background(self, color: str):
+        self.__background = palette.validate(color)
+        self.__color_attr = palette.color_pair(self.__foreground[0], self.__background[0])
+        if self.request_update():
+            self._update_colors()
+
+    @property
+    def foreground(self) -> str:
+        return self.__foreground[0]
+
+    @foreground.setter
+    def foreground(self, color: str):
+        self.__foreground = palette.validate(color)
+        self.__color_attr = palette.color_pair(self.__foreground[0], self.__background[0])
+        if self.request_update():
+            self._update_colors()
+
+    @property
+    def color_attr(self) -> int:
+        return self.__color_attr
+
+    def invalidate(self):
+        if self.windowed and self.request_update():
+            self._repaint()
+
+def invalidator(method: InvalidateMethod):
     @functools.wraps(method)
     def with_invalidate(self, *args, **kwargs):
         should_invalidate = method(self, *args, **kwargs)
-        if should_invalidate and self.windowed is not None and self.request_update():
-            self._repaint()
+        if should_invalidate:
+            self.invalidate()
 
     return with_invalidate
 

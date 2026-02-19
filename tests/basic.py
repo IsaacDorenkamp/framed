@@ -1,5 +1,7 @@
 import curses
 import logging
+import random
+import string
 
 import framed
 import framed.palette
@@ -15,6 +17,10 @@ class TestPanel(framed.Panel):
     def set_label_text(self, text: str):
         self.label.set_text(text)
 
+    def set_label_colors(self, foreground: str, background: str):
+        self.label.foreground = foreground
+        self.label.background = background
+
     def arrange(self):
         fixed = self.fixed()
         fixed.add(self.label, 0, 0, 1, 40)
@@ -23,27 +29,38 @@ class TestPanel(framed.Panel):
 def main(stdscr: curses.window):
     framed.palette.setup()
     app = framed.App(stdscr)
-    manager = app.stack()
+    manager = app.multiplex()
 
-    first = app.new_panel(TestPanel)
-    first.set_label_text("First Page")
+    title, content, status = manager.split(3, direction=framed.Direction.vertical)
+    manager.set_proportions((), (0, 1, 0))
 
-    second = app.new_panel(TestPanel)
-    second.set_label_text("Second Page")
+    title_panel = app.new_panel(TestPanel, split_path=title)
+    content_panel = app.new_panel(TestPanel, split_path=content)
+    status_panel = app.new_panel(TestPanel, split_path=status)
 
-    manager.set_active_panel(0)
+    title_panel.set_label_text("Title")
+    title_panel.label.bold = True
+
+    content_panel.set_label_text("Content")
+    content_panel.label.italic = True
+    content_panel.label.bold = True
+    content_panel.label.underline = True
+
+    status_panel.set_label_text("Status")
+    status_panel.label.underline = True
 
     def handle_input(ch: int):
-        if ch == curses.KEY_F1:
-            manager.set_active_panel(0)
-        elif ch == curses.KEY_F2:
-            manager.set_active_panel(1)
-        elif ch == curses.KEY_F3:
-            first.set_label_text("Something else")
-        elif ch == curses.KEY_F4:
-            second.set_label_text("Something else 2")
-        elif ch == 3:
+        if ch == 3:
             app.quit()
+        elif ch == ord("c"):
+            colors = list(framed.palette.get_color_names())
+            foreground = random.choice(colors)
+            colors.remove(foreground)
+            background = random.choice(colors)
+
+            for panel in (title_panel, content_panel, status_panel):
+                panel.set_label_text("".join([random.choice(string.ascii_letters) for _ in range(25)]))
+                panel.set_label_colors(foreground, background)
 
     app.set_control_handler(handle_input)
 
