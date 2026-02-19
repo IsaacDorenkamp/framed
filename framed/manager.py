@@ -200,11 +200,24 @@ class MultiplexManager(Manager):
             sizes[index] = child_space
             used_space += child_space
 
+        # if we have remaining space, fill it
         distribute_index = 0
         while used_space < directional_space:
             sizes[distribute_index] += 1
-            distribute_index = (distribute_index + 1) % len(sizes)
             used_space += 1
+            distribute_index = (distribute_index + 1) % len(sizes)
+
+        # if we overshot (such as if some children had a portion of 0),
+        # we will trim down as much as we can. We want to permit 0-weight
+        # children to allow single-line (or column) regions that can be
+        # used for standard purposes like title bars, command bars, status
+        # lines, etc.
+        distribute_index = 0
+        while (used_space > directional_space) and any(size > 1 for size in sizes):
+            if sizes[distribute_index] > 1:
+                sizes[distribute_index] -= 1
+                used_space -= 1
+            distribute_index = (distribute_index + 1) % len(sizes)
 
         consumed_space = 0
         for index, child_node in enumerate(split_node.children):
@@ -264,7 +277,7 @@ class MultiplexManager(Manager):
         updated = replace_map.get(existing)
         if updated is not None:
             self._stdscr.move(y, x)
-            self._stdscr.addch(chr(updated))
+            self._stdscr.addch(chr(updated), curses.A_DIM)
 
     def __connect_borders(self, region: rect2, parent_direction: Direction):
         # TODO: Support non-unicode systems
@@ -323,6 +336,7 @@ class MultiplexManager(Manager):
             splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
         return splits
 
+<<<<<<< HEAD
     def set_split_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
         split_node = self.__splits.get_node(path)
         if not split_node.children:
@@ -337,4 +351,19 @@ class MultiplexManager(Manager):
         for (child_node, portion) in zip(split_node.children, proportions):
             child = child_node.value
             child.portion = portion
+=======
+    def set_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
+        node = self.__splits.get_node(path)
+        if not node.children:
+            raise ManagerError("'%s' is a bottom-level split!" % str(path))
+
+        if len(node.children) != len(proportions):
+            raise ManagerError("Needed %d proportions, got %d instead" % (len(node.children), len(proportions)))
+
+        if sum(proportions) > 1:
+            raise ManagerError("Sum of proportions must not exceed 1!")
+
+        for child, portion in zip(node.children, proportions):
+            child.value.portion = portion
+>>>>>>> 21b4f7d0ee4cebd86491028faceee0b84fbd827a
 
