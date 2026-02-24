@@ -26,6 +26,17 @@ class TestPanel(framed.Panel):
         fixed.add(self.label, 0, 0, 1, 40)
 
 
+class EditorPanel(framed.Panel):
+    def __init__(self, region: framed.rect2, owner: framed.Manager):
+        super().__init__(region, owner)
+        self.editor = framed.widgets.Editor()
+        self.add(self.editor)
+
+    def arrange(self):
+        fixed = self.fixed()
+        fixed.add(self.editor, 0, 0, 10, 20)
+
+
 def main(stdscr: curses.window):
     framed.palette.setup()
     app = framed.App(stdscr)
@@ -35,16 +46,11 @@ def main(stdscr: curses.window):
     manager.set_proportions((), (0, 1, 0))
 
     title_panel = app.new_panel(TestPanel, split_path=title)
-    content_panel = app.new_panel(TestPanel, split_path=content)
+    content_panel = app.new_panel(EditorPanel, split_path=content)
     status_panel = app.new_panel(TestPanel, split_path=status)
 
     title_panel.set_label_text("Title")
     title_panel.label.bold = True
-
-    content_panel.set_label_text("Content")
-    content_panel.label.italic = True
-    content_panel.label.bold = True
-    content_panel.label.underline = True
 
     status_panel.set_label_text("Status")
     status_panel.label.underline = True
@@ -52,15 +58,20 @@ def main(stdscr: curses.window):
     def handle_input(ch: int):
         if ch == 3:
             app.quit()
+        elif ch == ord('i'):
+            app.focus(content_panel.editor)
+            return framed.FocusCapture.capture
         elif ch == ord("c"):
             colors = list(framed.palette.get_color_names())
             foreground = random.choice(colors)
             colors.remove(foreground)
             background = random.choice(colors)
 
-            for panel in (title_panel, content_panel, status_panel):
+            for panel in (title_panel, status_panel):
                 panel.set_label_text("".join([random.choice(string.ascii_letters) for _ in range(25)]))
                 panel.set_label_colors(foreground, background)
+
+        return framed.FocusCapture.passthrough
 
     app.set_control_handler(handle_input)
 

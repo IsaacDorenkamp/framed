@@ -81,6 +81,7 @@ def color_pair(foreground: str, background: str) -> int:
         global __pair_id
         curses.init_pair(__pair_id, *pair)
         __pairs[pair] = __pair_id
+        __pair_id += 1
     return curses.color_pair(__pairs[pair])
 
 

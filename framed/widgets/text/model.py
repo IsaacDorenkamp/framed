@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 import io
-import typing
 
 
 @dataclass
@@ -72,6 +71,15 @@ class TextModel(metaclass=ABCMeta):
     def delete(self, region: TextRange):
         raise NotImplementedError()
 
+    @property
+    @abstractmethod
+    def lines(self) -> int:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_line_length(self, line: int):
+        raise NotImplementedError()
+
 
 # Implementations
 class TextModelError(Exception):
@@ -81,12 +89,16 @@ class TextModelError(Exception):
 class SimpleTextModel(TextModel):
     __lines: list[str]
 
-    def __init__(self):
-        self.__lines = []
+    def __init__(self, value: str = ""):
+        parts = value.split("\n")
+        self.__lines = [
+            part + "\n" if index < len(parts) - 1 else part
+            for index, part in enumerate(parts)
+        ]
 
     def get(self, region: TextRange | None = None) -> str:
         if region is None:
-            return "\n".join(self.__lines)
+            return "".join(self.__lines)
 
         if not region.valid:
             raise TextModelError(f"Invalid region: {region}")
@@ -124,13 +136,19 @@ class SimpleTextModel(TextModel):
             return result.getvalue()
 
     def insert(self, location: TextLocation, text: str):
-        if location.line >= len(self.__lines):
+        if location.line > len(self.__lines):
             raise TextModelError(f"line '{location.line}' out of range")
+        elif location.line == len(self.__lines):
+            if location.col > 0:
+                raise TextModelError(f"col '{location.col}' out of range for line '{location.line}'")
+            self.__lines[-1] += "\n"
+            self.__lines.extend(text.split("\n"))
+            return
 
         line = self.__lines[location.line]
         if location.col > len(line):
             raise TextModelError(f"column '{location.col}' out of range for line '{location.line}'")
-        elif location.col == len(line) and line[-1] == "\n":
+        elif line and location.col == len(line) and line[-1] == "\n":
             raise TextModelError(f"column '{location.col}' out of range for line '{location.line}'")
 
         parts = text.split("\n")
@@ -143,11 +161,11 @@ class SimpleTextModel(TextModel):
             del self.__lines[location.line]
             for index, part in enumerate(parts):
                 if index == 0:
-                    content = line[:location.col] + part
+                    content = line[:location.col] + part + "\n"
                 elif index == len(parts) - 1:
                     content = part + line[location.col:]
                 else:
-                    content = part
+                    content = part + "\n"
                 self.__lines.insert(location.line + index, content)
             
     def delete(self, region: TextRange):
@@ -160,12 +178,27 @@ class SimpleTextModel(TextModel):
         if end.line >= len(self.__lines):
             raise TextModelError(f"line '{end.line}' out of range")
 
-        # FIX: UNFINISHED
         replace_with = ""
         for line_no in range(end.line, start.line - 1, -1):
             line = self.__lines[line_no]
             if line_no == start.line:
-                if start.col > len(line):
+                if start.col >= len(line):
                     raise TextModelError(f"column '{start.col}' out of range for line '{start.line}'")
-                elif start.col == len(line) and line[-1] == "\n":
-                    raise TextModelError(f"column '{start.col}' out of range for line '{start.line}'")
+                replace_with = line[:start.col] + replace_with
+            if line_no == end.line:
+                if end.col > len(line):
+                    raise TextModelError(f"column '{end.col}' out of range for line '{end.line}'")
+                replace_with += line[end.col+1:]
+
+            del self.__lines[line_no]
+
+        if replace_with:
+            self.__lines.insert(start.line, replace_with)
+
+    @property
+    def lines(self) -> int:
+        return len(self.__lines)
+
+    def get_line_length(self, line: int):
+        return len(self.__lines[line])
+

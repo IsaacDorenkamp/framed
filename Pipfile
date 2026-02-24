@@ -7,6 +7,7 @@ name = "pypi"
 
 [dev-packages]
 pyright = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.12"
