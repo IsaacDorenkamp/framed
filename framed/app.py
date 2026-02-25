@@ -31,9 +31,11 @@ class FocusState:
             return
 
         if self.__focused is not None:
+            self.__focused._focused = False
             self.__focused.on_unfocus()
         self.__focused = focused
         if self.__focused is not None:
+            self.__focused._focused = True
             self.__focused.on_focus()
 
     def capture_input(self, ch: int) -> bool:

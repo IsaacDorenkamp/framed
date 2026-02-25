@@ -105,7 +105,6 @@ def test_simple_model_delete():
     assert model.get() == "line 3"
 
 
-
 def test_simple_model_insert_and_delete():
     model = SimpleTextModel()
     model.insert(TextLocation(line=0, col=0), "the first long line")

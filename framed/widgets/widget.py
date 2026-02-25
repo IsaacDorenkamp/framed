@@ -164,9 +164,11 @@ class Widget(metaclass=ABCMeta):
 
 class FocusHolder(Widget):
     __greedy: bool
+    _focused: bool
     def __init__(self, greedy: bool = False):
         super().__init__()
         self.__greedy = greedy
+        self._focused = False
 
     @abstractmethod
     def on_focus(self):
@@ -179,6 +181,10 @@ class FocusHolder(Widget):
     @abstractmethod
     def on_input(self, ch: int):
         raise NotImplementedError()
+
+    @property
+    def focused(self) -> bool:
+        return self._focused
 
     @property
     def greedy(self) -> bool:

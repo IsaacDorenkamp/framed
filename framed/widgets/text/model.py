@@ -59,6 +59,9 @@ class TextRange:
 
 
 class TextModel(metaclass=ABCMeta):
+    def __init__(self, text: str = ""):
+        pass
+
     @abstractmethod
     def get(self, region: TextRange | None = None) -> str:
         raise NotImplementedError()
@@ -89,16 +92,12 @@ class TextModelError(Exception):
 class SimpleTextModel(TextModel):
     __lines: list[str]
 
-    def __init__(self, value: str = ""):
-        parts = value.split("\n")
-        self.__lines = [
-            part + "\n" if index < len(parts) - 1 else part
-            for index, part in enumerate(parts)
-        ]
+    def __init__(self, text: str = ""):
+        self.__lines = text.split("\n")
 
     def get(self, region: TextRange | None = None) -> str:
         if region is None:
-            return "".join(self.__lines)
+            return "\n".join(self.__lines)
 
         if not region.valid:
             raise TextModelError(f"Invalid region: {region}")
@@ -130,9 +129,9 @@ class SimpleTextModel(TextModel):
                 elif line_no == end.line:
                     if end.col > len(line):
                         raise TextModelError(f"column '{end.col}' out of range for line '{line}'")
-                    result.write(line[:end.col+1])
+                    result.write("\n" + line[:end.col+1])
                 else:
-                    result.write(line)
+                    result.write("\n" + line)
             return result.getvalue()
 
     def insert(self, location: TextLocation, text: str):
@@ -141,7 +140,6 @@ class SimpleTextModel(TextModel):
         elif location.line == len(self.__lines):
             if location.col > 0:
                 raise TextModelError(f"col '{location.col}' out of range for line '{location.line}'")
-            self.__lines[-1] += "\n"
             self.__lines.extend(text.split("\n"))
             return
 
@@ -161,11 +159,11 @@ class SimpleTextModel(TextModel):
             del self.__lines[location.line]
             for index, part in enumerate(parts):
                 if index == 0:
-                    content = line[:location.col] + part + "\n"
+                    content = line[:location.col] + part
                 elif index == len(parts) - 1:
                     content = part + line[location.col:]
                 else:
-                    content = part + "\n"
+                    content = part
                 self.__lines.insert(location.line + index, content)
             
     def delete(self, region: TextRange):
@@ -182,7 +180,7 @@ class SimpleTextModel(TextModel):
         for line_no in range(end.line, start.line - 1, -1):
             line = self.__lines[line_no]
             if line_no == start.line:
-                if start.col >= len(line):
+                if start.col > len(line):
                     raise TextModelError(f"column '{start.col}' out of range for line '{start.line}'")
                 replace_with = line[:start.col] + replace_with
             if line_no == end.line:
@@ -192,8 +190,7 @@ class SimpleTextModel(TextModel):
 
             del self.__lines[line_no]
 
-        if replace_with:
-            self.__lines.insert(start.line, replace_with)
+        self.__lines.insert(start.line, replace_with)
 
     @property
     def lines(self) -> int:
@@ -201,4 +198,3 @@ class SimpleTextModel(TextModel):
 
     def get_line_length(self, line: int):
         return len(self.__lines[line])
-
