@@ -1,11 +1,71 @@
 import pytest
 
 from framed.widgets.text.model import (
+    LineTextModel,
     SimpleTextModel,
     TextLocation,
     TextModelError,
     TextRange,
 )
+
+
+# -- Test Single Line Model --
+def test_line_model_constructor():
+    model = LineTextModel()
+    assert model.get() == ""
+
+    model = LineTextModel("the default value")
+    assert model.get() == "the default value"
+
+    model = LineTextModel("line 1\nline 2")
+    assert model.get() == "line 1"
+
+
+def test_line_model_insert():
+    model = LineTextModel()
+    result = model.insert(TextLocation(line=0, col=0), "some new text")
+    assert result.after.line == 0
+    assert result.after.col == 13
+    assert result.remainder is None
+    assert model.get() == "some new text"
+
+    result = model.insert(TextLocation(line=0, col=5), "awesome ")
+    assert result.after.line == 0
+    assert result.after.col == 13
+    assert result.remainder is None
+    assert model.get() == "some awesome new text"
+
+    with pytest.raises(TextModelError):
+        model.insert(TextLocation(line=1, col=0), "out of range")
+
+    with pytest.raises(TextModelError):
+        model.insert(TextLocation(line=0, col=0), "\n")
+
+    assert model.get(
+        TextRange(
+            TextLocation(line=0, col=5),
+            TextLocation(line=0, col=12),
+        )
+    ) == "awesome"
+
+
+def test_line_model_delete():
+    model = LineTextModel("this is some boring text")
+    model.delete(
+        TextRange(
+            TextLocation(line=0, col=13),
+            TextLocation(line=0, col=20),
+        )
+    )
+    assert model.get() == "this is some text"
+
+    model.delete(
+        TextRange(
+            TextLocation(line=0, col=0),
+            TextLocation(line=0, col=len(model.get()))
+        )
+    )
+    assert model.get() == ""
 
 
 # -- Test Simple Model --
@@ -22,7 +82,9 @@ def test_simple_model_constructor():
 
 def test_simple_model_insert():
     model = SimpleTextModel()
-    model.insert(TextLocation(line=0, col=0), "some new text")
+    result = model.insert(TextLocation(line=0, col=0), "some new text")
+    assert result.after.line == 0
+    assert result.after.col == 13
     assert model.get() == "some new text"
 
     model.insert(TextLocation(line=0, col=5), "awesome ")
@@ -34,20 +96,22 @@ def test_simple_model_insert():
     assert model.get(
         TextRange(
             TextLocation(line=0, col=5),
-            TextLocation(line=0, col=11),
+            TextLocation(line=0, col=12),
         )
     ) == "awesome"
 
-    model.insert(
+    result = model.insert(
         TextLocation(line=1, col=0),
         "the second line",
     )
+    assert result.after.line == 1
+    assert result.after.col == 15
     assert model.get() == "some awesome new text\nthe second line"
 
     assert model.get(
         TextRange(
             TextLocation(line=0, col=17),
-            TextLocation(line=1, col=2)
+            TextLocation(line=1, col=3)
         )
     ) == "text\nthe"
 
@@ -59,10 +123,12 @@ def test_simple_model_insert():
             )
         )
 
-    model.insert(
+    result = model.insert(
         TextLocation(line=1, col=15),
         "?"
     )
+    assert result.after.line == 1
+    assert result.after.col == 16
     assert model.get() == "some awesome new text\nthe second line?"
 
 
@@ -92,14 +158,14 @@ def test_simple_model_delete():
     model.delete(
         TextRange(
             start=TextLocation(line=0, col=0),
-            end=TextLocation(line=0, col=6),
+            end=TextLocation(line=1, col=0),
         )
     )
     assert model.get() == "line 2\nline 3"
     model.delete(
         TextRange(
             start=TextLocation(line=0, col=4),
-            end=TextLocation(line=1, col=3)
+            end=TextLocation(line=1, col=4)
         )
     )
     assert model.get() == "line 3"
@@ -111,7 +177,7 @@ def test_simple_model_insert_and_delete():
     model.delete(
         TextRange(
             TextLocation(line=0, col=10),
-            TextLocation(line=0, col=14),
+            TextLocation(line=0, col=15),
         )
     )
     assert model.get() == "the first line"
@@ -122,7 +188,7 @@ def test_simple_model_insert_and_delete():
     model.delete(
         TextRange(
             TextLocation(line=0, col=21),
-            TextLocation(line=1, col=3)
+            TextLocation(line=1, col=4)
         )
     )
     assert model.get() == "the first edited line the second line"

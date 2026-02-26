@@ -6,6 +6,7 @@ import string
 import framed
 import framed.palette
 import framed.widgets
+import framed.widgets.text
 
 
 class TestPanel(framed.Panel):
@@ -29,7 +30,7 @@ class TestPanel(framed.Panel):
 class EditorPanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.editor = framed.widgets.Editor("these are\nsome lines\nof text")
+        self.editor = framed.widgets.Editor("these are\nsome lines\nof text", model_cls=framed.widgets.text.LineTextModel)
         self.add(self.editor)
 
     def arrange(self):

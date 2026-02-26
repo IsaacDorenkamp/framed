@@ -61,6 +61,12 @@ class TextRange:
         return self.end >= self.start
 
 
+@dataclass
+class InsertResult:
+    after: TextLocation
+    remainder: str | None = None
+
+
 class TextModel(metaclass=ABCMeta):
     def __init__(self, text: str = ""):
         pass
@@ -70,7 +76,7 @@ class TextModel(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def insert(self, location: TextLocation, text: str):
+    def insert(self, location: TextLocation, text: str) -> InsertResult:
         raise NotImplementedError()
 
     @abstractmethod
@@ -100,6 +106,95 @@ class TextModelError(Exception):
     pass
 
 
+class LineTextModel(TextModel):
+    __text: str
+
+    def __init__(self, text: str = ""):
+        self.__text = text.split("\n")[0]
+
+    def get(self, region: TextRange | None = None) -> str:
+        if region is None:
+            return self.__text
+
+        if not region.valid:
+            raise TextModelError(f"invalid region: {region}")
+
+        start = region.start
+        end = region.end
+        if end.line > 0:
+            raise TextModelError(f"line '{end.line}' out of range")
+
+        return self.__text[start.col:end.col]
+
+    def insert(self, location: TextLocation, text: str):
+        if location.line > 0:
+            raise TextModelError(f"line '{location.line}' out of range")
+
+        if location.col > len(self.__text):
+            raise TextModelError(f"column '{location.col}' out of range")
+
+        if "\n" in text:
+            raise TextModelError(f"cannot insert newline into single-line model!")
+
+        self.__text = self.__text[:location.col] + text + self.__text[location.col:]
+
+        return InsertResult(after=TextLocation(line=0, col=location.col + len(text)))
+
+    def delete(self, region: TextRange):
+        if not region.valid:
+            raise TextModelError(f"invalid region: {region}")
+
+        start = region.start
+        end = region.end
+        if end.line > 0:
+            raise TextModelError(f"line '{end.line}' out of range")
+
+        if end.col > len(self.__text):
+            raise TextModelError(f"column '{end.col}' out of range")
+
+        self.__text = self.__text[:start.col] + self.__text[end.col:]
+
+    @property
+    def lines(self) -> int:
+        return 1
+
+    def get_line_length(self, line: int):
+        if line > 0:
+            raise TextModelError(f"line '{line}' out of range")
+
+        return len(self.__text)
+
+    def traverse(self, location: TextLocation, delta: int) -> TextLocation | None:
+        if not self.has(location):
+            raise TextModelError(f"location '{location}' out of range")
+
+        result = location.clone()
+
+        reverse = delta < 0
+        delta = abs(delta)
+        while delta > 0:
+            if reverse:
+                if result.col == 0:
+                    return None
+                else:
+                    result.col -= 1
+            else:
+                if result.col >= len(self.__text):
+                    return None
+                else:
+                    result.col += 1
+
+            delta -= 1
+
+        return result
+
+    def has(self, location: TextLocation) -> bool:
+        if location.line > 0:
+            return False
+
+        return location.col <= len(self.__text)
+
+
 class SimpleTextModel(TextModel):
     __lines: list[str]
 
@@ -125,10 +220,10 @@ class SimpleTextModel(TextModel):
                 raise TextModelError(f"line '{line}' out of range")
 
             line = self.__lines[line]
-            if end.col >= len(line):
+            if end.col > len(line):
                 raise TextModelError(f"column '{end.col}' out of range for line '{line}'")
 
-            return line[start.col:end.col+1]
+            return line[start.col:end.col]
         else:
             result = io.StringIO()
             for line_no in range(start.line, end.line+1):
@@ -140,7 +235,7 @@ class SimpleTextModel(TextModel):
                 elif line_no == end.line:
                     if end.col > len(line):
                         raise TextModelError(f"column '{end.col}' out of range for line '{line}'")
-                    result.write("\n" + line[:end.col+1])
+                    result.write("\n" + line[:end.col])
                 else:
                     result.write("\n" + line)
             return result.getvalue()
@@ -151,8 +246,9 @@ class SimpleTextModel(TextModel):
         elif location.line == len(self.__lines):
             if location.col > 0:
                 raise TextModelError(f"col '{location.col}' out of range for line '{location.line}'")
-            self.__lines.extend(text.split("\n"))
-            return
+            parts = text.split("\n")
+            self.__lines.extend(parts)
+            return InsertResult(after=TextLocation(line=location.line + len(parts) - 1, col=len(parts[-1])))
 
         line = self.__lines[location.line]
         if location.col > len(line):
@@ -164,6 +260,7 @@ class SimpleTextModel(TextModel):
         if len(parts) == 1:
             # modifies a single line only
             self.__lines[location.line] = line[:location.col] + text + line[location.col:]
+            end_col = location.col + len(text)
         else:
             # oh boy, multiple lines!
             line = self.__lines[location.line]
@@ -176,6 +273,9 @@ class SimpleTextModel(TextModel):
                 else:
                     content = part
                 self.__lines.insert(location.line + index, content)
+            end_col = len(parts[-1])
+
+        return InsertResult(after=TextLocation(line=location.line + len(parts) - 1, col=end_col))
             
     def delete(self, region: TextRange):
         if not region.valid:

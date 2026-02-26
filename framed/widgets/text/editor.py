@@ -55,6 +55,14 @@ class Editor(FocusHolder):
                 self.__model.delete(model.TextRange(self.__cursor, next_pos))
                 self.__adjust_offset()
                 self._repaint()
+        elif ch in [keys.ENTER, keys.RETURN]:
+            try:
+                result = self.__model.insert(self.__cursor, "\n")
+                self.__cursor = result.after
+                self._repaint()
+            except model.TextModelError:
+                # TODO: Give some indication of failure?
+                _log.exception("Newline failed")
         elif ch == keys.LEFT:
             prev_pos = self.__model.traverse(self.__cursor, -1)
             if prev_pos is not None:
@@ -111,7 +119,7 @@ class Editor(FocusHolder):
         for line_no in range(self.__offset[0], end_line):
             window_line = line_no - self.__offset[0]
             length = self.__model.get_line_length(line_no)
-            end = min(length - 1, self.__offset[1] + self.size[1] - 1)
+            end = min(length, self.__offset[1] + self.size[1] - 1)
             if self.__offset[1] > end:
                 continue
             line = self.__model.get(
