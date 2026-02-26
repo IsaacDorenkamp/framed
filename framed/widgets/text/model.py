@@ -76,6 +76,10 @@ class TextModel(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
+    def assign(self, text: str) -> TextLocation:
+        pass
+
+    @abstractmethod
     def insert(self, location: TextLocation, text: str) -> InsertResult:
         raise NotImplementedError()
 
@@ -125,6 +129,10 @@ class LineTextModel(TextModel):
             raise TextModelError(f"line '{end.line}' out of range")
 
         return self.__text[start.col:end.col]
+
+    def assign(self, text: str) -> TextLocation:
+        self.__text = text.split("\n")[0]
+        return TextLocation(line=0, col=len(self.__text))
 
     def insert(self, location: TextLocation, text: str):
         if location.line > 0:
@@ -239,6 +247,10 @@ class SimpleTextModel(TextModel):
                 else:
                     result.write("\n" + line)
             return result.getvalue()
+
+    def assign(self, text: str) -> TextLocation:
+        self.__lines = text.split("\n")
+        return TextLocation(line=len(self.__lines) - 1, col=len(self.__lines[-1]))
 
     def insert(self, location: TextLocation, text: str):
         if location.line > len(self.__lines):

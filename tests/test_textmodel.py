@@ -21,6 +21,17 @@ def test_line_model_constructor():
     assert model.get() == "line 1"
 
 
+def test_line_model_assign():
+    model = LineTextModel()
+    end = model.assign("text")
+    assert end.line == 0
+    assert end.col == 4
+
+    end = model.assign("")
+    assert end.line == 0
+    assert end.col == 0
+
+
 def test_line_model_insert():
     model = LineTextModel()
     result = model.insert(TextLocation(line=0, col=0), "some new text")
@@ -78,6 +89,21 @@ def test_simple_model_constructor():
 
     model = SimpleTextModel("line 1\nline 2")
     assert model.get() == "line 1\nline 2"
+
+
+def test_simple_model_assign():
+    model = SimpleTextModel()
+    end = model.assign("line 1\nline 2")
+    assert end.line == 1
+    assert end.col == 6
+
+    end = model.assign("line 1")
+    assert end.line == 0
+    assert end.col == 6
+
+    end = model.assign("")
+    assert end.line == 0
+    assert end.col == 0
 
 
 def test_simple_model_insert():

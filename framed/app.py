@@ -50,6 +50,11 @@ class FocusState:
         if self.__focused is not None:
             self.__focused.on_input(ch)
 
+    def update(self):
+        if self.__focused and not self.__focused.focused:
+            self.__focused.on_unfocus()
+            self.__focused = None
+
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
 
@@ -118,6 +123,8 @@ class App:
             self.__manager.refresh()
 
         while self.__running:
+            self.__focus.update()
+
             ch = self.__stdscr.getch()
             if ch == -1:
                 continue

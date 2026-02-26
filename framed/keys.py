@@ -20,3 +20,5 @@ DOWN = curses.KEY_DOWN
 
 ENTER = 10
 RETURN = 13
+
+ESCAPE = 27

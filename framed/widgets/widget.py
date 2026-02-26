@@ -190,6 +190,10 @@ class FocusHolder(Widget):
     def greedy(self) -> bool:
         return self.__greedy
 
+    def _relinquish(self):
+        self._focused = False
+
+
 def invalidator(method: InvalidateMethod):
     @functools.wraps(method)
     def with_invalidate(self, *args, **kwargs):
