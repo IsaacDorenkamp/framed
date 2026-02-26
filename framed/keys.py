@@ -1,3 +1,4 @@
+import curses
 import os
 
 
@@ -11,3 +12,8 @@ if os.uname().sysname == "Darwin":
 else:
     BACKSPACE = 8
     DELETE = 127
+
+LEFT = curses.KEY_LEFT
+RIGHT = curses.KEY_RIGHT
+UP = curses.KEY_UP
+DOWN = curses.KEY_DOWN

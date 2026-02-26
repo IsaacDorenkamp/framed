@@ -34,7 +34,7 @@ class EditorPanel(framed.Panel):
 
     def arrange(self):
         fixed = self.fixed()
-        fixed.add(self.editor, 0, 0, 10, 20)
+        fixed.add(self.editor, 0, 0, 1000, 1000)
 
 
 def main(stdscr: curses.window):

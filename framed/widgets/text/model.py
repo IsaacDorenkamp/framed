@@ -47,6 +47,9 @@ class TextLocation:
             self < other
         )
 
+    def clone(self) -> TextLocation:
+        return TextLocation(line=self.line, col=self.col)
+
 
 @dataclass
 class TextRange:
@@ -81,6 +84,14 @@ class TextModel(metaclass=ABCMeta):
 
     @abstractmethod
     def get_line_length(self, line: int):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def traverse(self, location: TextLocation, delta: int) -> TextLocation | None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def has(self, location: TextLocation) -> bool:
         raise NotImplementedError()
 
 
@@ -176,21 +187,15 @@ class SimpleTextModel(TextModel):
         if end.line >= len(self.__lines):
             raise TextModelError(f"line '{end.line}' out of range")
 
-        replace_with = ""
-        for line_no in range(end.line, start.line - 1, -1):
-            line = self.__lines[line_no]
-            if line_no == start.line:
-                if start.col > len(line):
-                    raise TextModelError(f"column '{start.col}' out of range for line '{start.line}'")
-                replace_with = line[:start.col] + replace_with
-            if line_no == end.line:
-                if end.col > len(line):
-                    raise TextModelError(f"column '{end.col}' out of range for line '{end.line}'")
-                replace_with += line[end.col+1:]
+        if start.line == end.line:
+            line = self.__lines[start.line]
+            self.__lines[start.line] = line[:start.col] + line[end.col:]
+            return
 
+        line = self.__lines[start.line]
+        self.__lines[start.line] = line[:start.col] + self.__lines[end.line][end.col:]
+        for line_no in range(end.line, start.line, -1):
             del self.__lines[line_no]
-
-        self.__lines.insert(start.line, replace_with)
 
     @property
     def lines(self) -> int:
@@ -198,3 +203,49 @@ class SimpleTextModel(TextModel):
 
     def get_line_length(self, line: int):
         return len(self.__lines[line])
+
+    def traverse(self, location: TextLocation, delta: int) -> TextLocation | None:
+        if not self.has(location):
+            raise ValueError(f"location {location} is not in the model.")
+
+        result = location.clone()
+        if delta == 0:
+            return result
+
+        reverse = delta < 0
+        delta = abs(delta)
+        while delta > 0:
+            if reverse:
+                if result.col == 0:
+                    if result.line == 0:
+                        return None
+                    else:
+                        result.line -= 1
+                        result.col = len(self.__lines[result.line])
+                else:
+                    result.col -= 1
+            else:
+                line = self.__lines[result.line]
+                if result.col == len(line):
+                    if result.line == len(self.__lines) - 1:
+                        return None
+                    else:
+                        result.line += 1
+                        result.col = 0
+                else:
+                    result.col += 1
+
+            delta -= 1
+
+        return result
+
+    def has(self, location: TextLocation):
+        if location.line >= len(self.__lines):
+            return False
+
+        line = self.__lines[location.line]
+        if location.col > len(line):
+            return False
+
+        return True
+
