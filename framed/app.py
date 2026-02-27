@@ -128,7 +128,7 @@ class App:
             ch = self.__stdscr.getch()
             if ch == -1:
                 continue
-            elif ch == 3 and self.__can_ctrl_c:
+            elif ch == 3:
                 self.quit()
             elif ch == curses.KEY_RESIZE:
                 if self.__manager is not None:
@@ -149,7 +149,4 @@ class App:
 
     def quit(self):
         self.__running = False
-
-    def ignore_ctrl_c(self, ignore: bool = True):
-        self.__can_ctrl_c = not ignore
 

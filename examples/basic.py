@@ -6,7 +6,6 @@ import string
 import framed
 import framed.palette
 import framed.widgets
-import framed.widgets.text
 
 
 class TestPanel(framed.Panel):

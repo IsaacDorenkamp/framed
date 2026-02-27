@@ -280,6 +280,14 @@ class Editor(FocusHolder):
         self.__bindings.update(bindings)
         self.__commands = sum(1 if action.is_command_action else 0 for action in self.__bindings.values())
 
+    # --- Get/Set Text ---
+    def get_text(self) -> str:
+        return self.__model.get()
+
+    def set_text(self, text: str):
+        self.__cursor = self.__model.assign(text)
+        self._repaint()
+
     @property
     def has_commands(self) -> bool:
         return self.__command_count > 0

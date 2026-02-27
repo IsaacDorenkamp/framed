@@ -1,4 +1,4 @@
 from .model import TextModel, LineTextModel, SimpleTextModel
-from .editor import Editor
+from .editor import Editor, EditorAction
 
-__all__ = ["Editor", "TextModel", "LineTextModel", "SimpleTextModel"]
+__all__ = ["Editor", "EditorAction", "TextModel", "LineTextModel", "SimpleTextModel"]
