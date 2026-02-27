@@ -78,6 +78,9 @@ class Panel(metaclass=ABCMeta):
             if widget.windowed:
                 widget.render()
         self.__window.noutrefresh()
+        for widget in self.__widgets:
+            if widget.windowed:
+                widget.validate()
 
     # layout utilities
     def fixed(self) -> FixedLayout:

@@ -1,12 +1,19 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 import curses
+import enum
 import functools
 import typing
 
 from ..struct import vec2
 from .. import palette
 from .. import _log
+
+
+class CursorMode(enum.IntEnum):
+    hidden = 0
+    light = 1
+    visible = 2
 
 
 class WidgetError(Exception):
@@ -24,6 +31,8 @@ class Widget(metaclass=ABCMeta):
     __background: palette.ColorInfo
     __foreground: palette.ColorInfo
     __color_attr: int
+    __scrollok: bool
+    __valid: bool
 
     def __init__(self):
         self.__window = None
@@ -32,12 +41,16 @@ class Widget(metaclass=ABCMeta):
         self.__background = palette.default_color_info
         self.__foreground = palette.default_color_info
         self.__color_attr = palette.color_pair(self.__background[0], self.__foreground[0])
+        self.__scrollok = True
+        self.__valid = False
 
     def enwindow(self, window: curses.window):
         if self.__window is not None:
             raise WidgetError("Widget is already windowed!")
 
+        window.scrollok(self.__scrollok)
         self.__window = window
+        self.__valid = False
 
     def dewindow(self, erase: bool = True):
         if self.__window is not None:
@@ -68,6 +81,11 @@ class Widget(metaclass=ABCMeta):
         state has been invalidated.
         """
         raise NotImplementedError()
+
+    def validate(self):
+        if not self.__valid:
+            self._window.bkgd(self.__color_attr)
+            self._repaint()
 
     def _repaint(self):
         self._window.erase()
@@ -126,9 +144,55 @@ class Widget(metaclass=ABCMeta):
     def color_attr(self) -> int:
         return self.__color_attr
 
+    @property
+    def scrollok(self) -> bool:
+        return self.__scrollok
+
+    @scrollok.setter
+    def scrollok(self, scrollok: bool):
+        self.__scrollok = scrollok
+        if self.windowed:
+            self._window.scrollok(scrollok)
+
+    def cursor(self, mode: CursorMode):
+        curses.curs_set(mode)
+
     def invalidate(self):
         if self.windowed and self.request_update():
             self._repaint()
+
+
+class FocusHolder(Widget):
+    __greedy: bool
+    _focused: bool
+    def __init__(self, greedy: bool = False):
+        super().__init__()
+        self.__greedy = greedy
+        self._focused = False
+
+    @abstractmethod
+    def on_focus(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_unfocus(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_input(self, ch: int):
+        raise NotImplementedError()
+
+    @property
+    def focused(self) -> bool:
+        return self._focused
+
+    @property
+    def greedy(self) -> bool:
+        return self.__greedy
+
+    def _relinquish(self):
+        self._focused = False
+
 
 def invalidator(method: InvalidateMethod):
     @functools.wraps(method)
