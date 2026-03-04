@@ -1,5 +1,6 @@
 import curses
 
+from ..const import HAlign
 from .widget import Widget, invalidator
 
 
@@ -8,12 +9,15 @@ class Label(Widget):
     _bold: bool
     _italic: bool
     _underline: bool
-    def __init__(self, text: str):
+    _align: HAlign
+
+    def __init__(self, text: str, align: HAlign = HAlign.LEFT):
         super().__init__()
         self._text = text
         self._bold = False
         self._italic = False
         self._underline = False
+        self._align = align
 
     @invalidator
     def set_text(self, text) -> bool:
@@ -22,6 +26,9 @@ class Label(Widget):
             return True
 
         return False
+
+    def get_text(self) -> str:
+        return self._text
 
     @property
     def bold(self) -> bool:
@@ -50,12 +57,24 @@ class Label(Widget):
         self._underline = underline
         self.invalidate()
 
+    @property
+    def align(self) -> HAlign:
+        return self._align
+
+    @align.setter
+    def align(self, align: HAlign):
+        self._align = align
+        self.invalidate()
+
     def render(self):
         window = self._window
-        window.move(0, 0)
+        attr = (curses.A_BOLD if self.bold else 0) | (curses.A_UNDERLINE if self.underline else 0) | (curses.A_ITALIC if self.italic else 0)
+        remaining_space = max(0, self.size[1] - len(self._text))
+        offset = self._align.get_offset(remaining_space)
+        available = self.size[1] - offset
+        window.move(0, offset)
         try:
-            attr = (curses.A_BOLD if self.bold else 0) | (curses.A_UNDERLINE if self.underline else 0) | (curses.A_ITALIC if self.italic else 0)
-            window.addnstr(self._text, self.size[1], attr)
+            window.addnstr(self._text, available, attr)
         except curses.error:
             pass
 

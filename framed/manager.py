@@ -2,12 +2,12 @@ from abc import ABCMeta, abstractmethod
 import curses
 from dataclasses import dataclass
 import enum
-import math
 
 from .panel import Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
 from . import _log
+from . import util
 
 
 class ManagerError(Exception):
@@ -33,9 +33,20 @@ class Manager(metaclass=ABCMeta):
     """
 
     _stdscr: curses.window
+    _free_panels: list[Panel]
 
     def __init__(self, stdscr: curses.window):
         self._stdscr = stdscr
+        self._free_panels = []
+
+    def add_free_panel(self, panel: Panel):
+        self._free_panels.append(panel)
+        panel.render()
+        self._stdscr.refresh()
+
+    def remove_free_panel(self, panel: Panel):
+        self._free_panels.remove(panel)
+        self.blit()
 
     @abstractmethod
     def add_panel(self, panel: Panel, *args, **kwargs):
@@ -67,6 +78,8 @@ class Manager(metaclass=ABCMeta):
         self.decorate()
         self._stdscr.noutrefresh()
         self.show()
+        for panel in self._free_panels:
+            panel.render()
         self._stdscr.noutrefresh()
         curses.doupdate()
 
@@ -87,6 +100,14 @@ class Manager(metaclass=ABCMeta):
         should return False in that case. If a panel is
         visible, however, this method should return True to
         permit the panel to perform a visual update.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def blit(self):
+        """
+        Refresh all of the managed (not free) panels. Used to
+        replace things which have been drawn-over by free panels.
         """
         raise NotImplementedError()
 
@@ -133,6 +154,10 @@ class StackManager(Manager):
 
         return panel == self.__panels[self.__active]
 
+    def blit(self):
+        for panel in self.__panels:
+            panel.blit()
+
     # --- StackManager-specific methods ---
     def set_active_panel(self, active_index: int):
         if active_index >= len(self.__panels):
@@ -150,7 +175,7 @@ class Direction(enum.IntEnum):
 
 @dataclass
 class Split:
-    portion: float
+    portion: int
     panel_index: int
     region: rect2
     direction: Direction
@@ -163,7 +188,7 @@ class MultiplexManager(Manager):
 
     def __init__(self, stdscr: curses.window, top_level_split_direction: Direction = Direction.horizontal):
         super().__init__(stdscr)
-        self.__splits = _tree(Split(1.0, -1, rect2(0, 0, 0, 0), top_level_split_direction))
+        self.__splits = _tree(Split(0, -1, rect2(0, 0, 0, 0), top_level_split_direction))
         self.__panels = []
         self.__visible = []
 
@@ -187,37 +212,10 @@ class MultiplexManager(Manager):
         split = split_node.value
         total_directional_space = region.w if split.direction == Direction.horizontal else region.h
         directional_space = total_directional_space - (len(split_node.children) - 1)
-
-        if directional_space < len(split_node.children):
-            # there's not enough space to fit the children. in this case, we will simply stop arranging
-            # and not include the panels in the list of visible panels.
+        weights = [child.value.portion for child in split_node.children]
+        sizes = util.distribute(directional_space, weights)
+        if any(x == 0 for x in sizes):
             return
-
-        used_space = 0
-        sizes = [0] * len(split_node.children)
-        for index, child in enumerate(split_node.children):
-            child_space = max(1, math.floor(directional_space * child.value.portion))
-            sizes[index] = child_space
-            used_space += child_space
-
-        # if we have remaining space, fill it
-        distribute_index = 0
-        while used_space < directional_space:
-            sizes[distribute_index] += 1
-            used_space += 1
-            distribute_index = (distribute_index + 1) % len(sizes)
-
-        # if we overshot (such as if some children had a portion of 0),
-        # we will trim down as much as we can. We want to permit 0-weight
-        # children to allow single-line (or column) regions that can be
-        # used for standard purposes like title bars, command bars, status
-        # lines, etc.
-        distribute_index = 0
-        while (used_space > directional_space) and any(size > 1 for size in sizes):
-            if sizes[distribute_index] > 1:
-                sizes[distribute_index] -= 1
-                used_space -= 1
-            distribute_index = (distribute_index + 1) % len(sizes)
 
         consumed_space = 0
         for index, child_node in enumerate(split_node.children):
@@ -251,6 +249,7 @@ class MultiplexManager(Manager):
         split = split_node.value
         for index, child_node in enumerate(split_node.children):
             child = child_node.value
+            _log.info(f"region: {child.region}")
             if index > 0:
                 # draw border
                 if split.direction == Direction.horizontal:
@@ -321,6 +320,10 @@ class MultiplexManager(Manager):
     def request_update(self, panel: Panel) -> bool:
         return panel in self.__visible
 
+    def blit(self):
+        for panel in self.__panels:
+            panel.blit()
+
     # --- MultiplexManager-specific methods ---
     def split(self, parts: int, path: tuple[int, ...] | None = None, direction: Direction = Direction.horizontal) -> list[tuple[int, ...]]:
         if path is None:
@@ -330,13 +333,12 @@ class MultiplexManager(Manager):
         if node.children:
             raise ManagerError("'%s' is not a bottom-level split!" % str(path))
         node.value.direction = direction
-        portion = 1.0 / parts
         splits = []
         for _ in range(parts):
-            splits.append(self.__splits.insert(path, Split(portion, -1, rect2(), direction)))
+            splits.append(self.__splits.insert(path, Split(1, -1, rect2(), direction)))
         return splits
 
-    def set_proportions(self, path: tuple[int, ...], proportions: tuple[float, ...]):
+    def set_proportions(self, path: tuple[int, ...], proportions: tuple[int, ...]):
         node = self.__splits.get_node(path)
         if not node.children:
             raise ManagerError("'%s' is a bottom-level split!" % str(path))

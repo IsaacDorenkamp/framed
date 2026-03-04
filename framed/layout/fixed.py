@@ -10,6 +10,7 @@ class FixedLayout(Layout):
     __constrained: dict[Widget, rect2]
 
     def __init__(self):
+        super().__init__()
         self.__positions = {}
         self.__constrained = {}
 
@@ -26,12 +27,15 @@ class FixedLayout(Layout):
         self.__positions.clear()
         self.__constrained.clear()
 
-    def bake(self):
+    def bake(self, offset: vec2 | None = None):
+        if offset is None:
+            offset = vec2()
+
         for widget, position in self.__positions.items():
-            actual_y = min(position.y, self.window_size.y - 1)
-            actual_x = min(position.x, self.window_size.x - 1)
-            actual_end_y = min(actual_y + position.h - 1, self.window_size.y - 1)
-            actual_end_x = min(actual_x + position.w - 1, self.window_size.x - 1)
+            actual_y = min(position.y + offset.y, self.window_size.y - 1)
+            actual_x = min(position.x + offset.x, self.window_size.x - 1)
+            actual_end_y = min(actual_y + position.h - 1, self.window_size.y)
+            actual_end_x = min(actual_x + position.w - 1, self.window_size.x)
             region = rect2(
                 actual_y, actual_x, actual_end_y - actual_y + 1, actual_end_x - actual_x + 1
             )

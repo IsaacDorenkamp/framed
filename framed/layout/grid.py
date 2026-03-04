@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from .layout import Layout, LayoutError
 from ..struct import rect2, vec2
 from ..widgets import Widget
-from .. import _log
 
 
 @dataclass(frozen=True)
@@ -20,6 +19,7 @@ class GridLayout(Layout):
     __regions: dict[Widget, rect2]
 
     def __init__(self):
+        super().__init__()
         self.__cells = {}
         self.__widgets = set()
         self.__regions = {}
@@ -40,9 +40,12 @@ class GridLayout(Layout):
         self.__widgets.clear()
         self.__regions.clear()
 
-    def bake(self):
+    def bake(self, offset: vec2 | None = None):
         if not self.__cells:
             return
+
+        if offset is None:
+            offset = vec2()
 
         max_row = max(pos.y + info.row_span - 1 for pos, info in self.__cells.items())
         max_col = max(pos.x + info.col_span - 1 for pos, info in self.__cells.items())
@@ -53,7 +56,7 @@ class GridLayout(Layout):
             col_width  = (self.window_size.x * info.col_span) // num_cols
             if row_height == 0 or col_width == 0:
                 continue
-            region = rect2(y=pos.y * row_height, x=pos.x * col_width, h=row_height, w=col_width)
+            region = rect2(y=pos.y * row_height + offset.y, x=pos.x * col_width + offset.x, h=row_height, w=col_width)
             self.__regions[info.widget] = region
             info.widget.set_size(vec2(region.h, region.w))
 

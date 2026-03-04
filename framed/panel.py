@@ -5,9 +5,12 @@ import typing
 
 from .layout import Layout
 from .layout.fixed import FixedLayout
+from .layout.flex import FlexLayout
 from .layout.grid import GridLayout
 from .struct import rect2, vec2
 from .widgets import Widget
+
+from . import _log
 
 
 class Panel(metaclass=ABCMeta):
@@ -19,6 +22,7 @@ class Panel(metaclass=ABCMeta):
     __layout: Layout
     __valid: bool
     __owner: Manager | None
+    __bordered: bool
 
     def __init__(self, region: rect2, owner: Manager | None = None):
         self.__window = curses.newwin(*region.curses)
@@ -27,14 +31,21 @@ class Panel(metaclass=ABCMeta):
         self.__layout = FixedLayout()
         self.__valid = False
         self.__owner = owner
+        self.__bordered = False
 
     def add(self, widget: Widget):
         widget._adopt(self)
         self.__widgets.append(widget)
 
     def reconfigure(self):
-        self.__layout.window_size = self.__size
-        self.__layout.bake()
+        if self.__bordered:
+            size = vec2(max(0, self.__size.y - 2), max(0, self.__size.x - 2))
+            offset = vec2(1, 1)
+        else:
+            size = self.__size
+            offset = None
+        self.__layout.window_size = size
+        self.__layout.bake(offset=offset)
         for widget in self.__widgets:
             widget.dewindow(erase=False)
             window = self.__layout.carve(widget, self.__window)
@@ -72,18 +83,24 @@ class Panel(metaclass=ABCMeta):
             self.__validate()
 
         self.__window.erase()
+        if self.__bordered:
+            self.__window.box()
         for widget in self.__widgets:
             if widget.windowed:
-                widget.render()
+                widget.paint()
         self.__window.noutrefresh()
-        for widget in self.__widgets:
-            if widget.windowed:
-                widget.validate()
 
     # layout utilities
     def fixed(self) -> FixedLayout:
         if not isinstance(self.__layout, FixedLayout):
             self.__layout = FixedLayout()
+
+        self.__layout.reset()
+        return self.__layout
+
+    def flex(self) -> FlexLayout:
+        if not isinstance(self.__layout, FlexLayout):
+            self.__layout = FlexLayout()
 
         self.__layout.reset()
         return self.__layout
@@ -101,6 +118,9 @@ class Panel(metaclass=ABCMeta):
 
         return False
 
+    def blit(self):
+        self.__window.refresh()
+
     @property
     def size(self) -> vec2:
         return self.__size
@@ -108,6 +128,18 @@ class Panel(metaclass=ABCMeta):
     @property
     def position(self) -> vec2:
         return self.__position
+
+    @property
+    def bordered(self) -> bool:
+        return self.__bordered
+
+    @bordered.setter
+    def bordered(self, bordered: bool):
+        self.__bordered = bordered
+        self.__valid = False
+        if self.request_update():
+            self.render()
+            curses.doupdate()
 
 
 if typing.TYPE_CHECKING:

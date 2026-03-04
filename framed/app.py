@@ -110,6 +110,22 @@ class App:
     def clear_focus(self):
         self.__focus.set_focused(None)
 
+
+    # --- Free Panels (Dialogs) ---
+    def new_free_panel(self, panel_type: type[PanelType], region: rect2) -> PanelType:
+        if self.__manager is None:
+            raise AppError("No manager assigned!")
+
+        new_panel = panel_type(region=region, owner=self.__manager)
+        self.__manager.add_free_panel(new_panel)
+        return new_panel
+
+    def destroy_free_panel(self, panel: Panel):
+        if self.__manager is None:
+            raise AppError("No manager assigned!")
+
+        self.__manager.remove_free_panel(panel)
+
     # --- Mainloop ---
     def run(self):
         _log.info("Running application")

@@ -1,3 +1,4 @@
+import curses
 import enum
 import functools
 import typing
@@ -72,7 +73,6 @@ class Editor(FocusHolder):
         super().__init__(greedy=True)
         self.__model = model_cls(text=text)
         self.__offset = 0, 0
-        self.scrollok = False
         self.__cursor = model.TextLocation(0, 0)
         self.__mode = EditorMode.command
         self.__bindings = Editor._DEFAULT_BINDINGS.copy()
@@ -175,12 +175,12 @@ class Editor(FocusHolder):
         return False
 
     def __command(self, ch: int):
+        # TODO: Commands!
         pass
 
     def on_input(self, ch: int):
         if self.__mode == EditorMode.edit:
             handled = self.__insert(ch)
-            # TODO: try to identify "stop edit" action
             if not handled:
                 handled = self.__navigate(ch)
         else:
@@ -226,7 +226,7 @@ class Editor(FocusHolder):
         for line_no in range(self.__offset[0], end_line):
             window_line = line_no - self.__offset[0]
             length = self.__model.get_line_length(line_no)
-            end = min(length, self.__offset[1] + self.size[1] - 1)
+            end = min(length, self.__offset[1] + self.size[1])
             if self.__offset[1] > end:
                 continue
             line = self.__model.get(
@@ -236,7 +236,10 @@ class Editor(FocusHolder):
                 )
             )
             self._window.move(window_line, 0)
-            self._window.addnstr(line, self.size[1])
+            try:
+                self._window.addnstr(line, self.size[1])
+            except curses.error:
+                pass
 
         if self.focused:
             self.__position_cursor()

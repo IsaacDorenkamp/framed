@@ -7,7 +7,6 @@ import typing
 
 from ..struct import vec2
 from .. import palette
-from .. import _log
 
 
 class CursorMode(enum.IntEnum):
@@ -32,17 +31,18 @@ class Widget(metaclass=ABCMeta):
     __foreground: palette.ColorInfo
     __color_attr: int
     __scrollok: bool
-    __valid: bool
 
-    def __init__(self):
+    _valid: bool
+
+    def __init__(self, scrollok: bool = False):
         self.__window = None
         self.__size = vec2()
         self.__parent = None
         self.__background = palette.default_color_info
         self.__foreground = palette.default_color_info
         self.__color_attr = palette.color_pair(self.__background[0], self.__foreground[0])
-        self.__scrollok = True
-        self.__valid = False
+        self.__scrollok = scrollok
+        self._valid = False
 
     def enwindow(self, window: curses.window):
         if self.__window is not None:
@@ -50,7 +50,7 @@ class Widget(metaclass=ABCMeta):
 
         window.scrollok(self.__scrollok)
         self.__window = window
-        self.__valid = False
+        self._valid = False
 
     def dewindow(self, erase: bool = True):
         if self.__window is not None:
@@ -82,14 +82,19 @@ class Widget(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def validate(self):
-        if not self.__valid:
-            self._window.bkgd(self.__color_attr)
-            self._repaint()
+    def paint(self):
+        if not self._valid:
+            self._validate()
+            self._valid = True
+
+        self.render()
+
+    def _validate(self):
+        self._window.bkgd(self.color_attr)
 
     def _repaint(self):
         self._window.erase()
-        self.render()
+        self.paint()
         self._window.refresh()
 
     @property
@@ -128,6 +133,8 @@ class Widget(metaclass=ABCMeta):
         self.__color_attr = palette.color_pair(self.__foreground[0], self.__background[0])
         if self.request_update():
             self._update_colors()
+        else:
+            self._valid = False
 
     @property
     def foreground(self) -> str:
@@ -139,6 +146,8 @@ class Widget(metaclass=ABCMeta):
         self.__color_attr = palette.color_pair(self.__foreground[0], self.__background[0])
         if self.request_update():
             self._update_colors()
+        else:
+            self._valid = False
 
     @property
     def color_attr(self) -> int:
@@ -165,8 +174,8 @@ class Widget(metaclass=ABCMeta):
 class FocusHolder(Widget):
     __greedy: bool
     _focused: bool
-    def __init__(self, greedy: bool = False):
-        super().__init__()
+    def __init__(self, greedy: bool = False, scrollok: bool = False):
+        super().__init__(scrollok=scrollok)
         self.__greedy = greedy
         self._focused = False
 
@@ -205,3 +214,4 @@ def invalidator(method: InvalidateMethod):
 
 if typing.TYPE_CHECKING:
     from ..panel import Panel
+

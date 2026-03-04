@@ -26,7 +26,7 @@ class Layout(metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def bake(self):
+    def bake(self, offset: vec2 | None = None):
         """
         Finalizes a layout for rendering. This method should
         do the heavy lifting of calculating the space that each
