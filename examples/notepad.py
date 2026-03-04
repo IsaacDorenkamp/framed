@@ -1,19 +1,22 @@
 import curses
 
 from framed.app import FocusCapture
+from framed.const import HAlign
 import framed.keys
 import framed.manager
 import framed.palette
 import framed.widgets
-import framed.widgets.text
+from framed.widgets.widget import FocusHolder
 
 
 class TitlePanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.title = framed.widgets.Editor(model_cls=framed.widgets.text.LineTextModel)
-        self.title.bind(framed.keys.ENTER, framed.widgets.text.EditorAction.edit_finish)
+        self.title = framed.widgets.Label("Untitled File")
         self.add(self.title)
+
+    def set_title(self, title: str):
+        self.title.set_text(title)
 
     def arrange(self):
         layout = self.grid()
@@ -41,6 +44,25 @@ class StatusPanel(framed.Panel):
     def arrange(self):
         layout = self.grid()
         layout.add(self.status, row=0, col=0)
+
+
+class OpenDialog(framed.Panel):
+    def __init__(self, region: framed.rect2, owner: framed.Manager):
+        super().__init__(region, owner)
+        self.bordered = True
+
+        self.label = framed.widgets.Label("Open: ", align=HAlign.RIGHT)
+        self.prompt = framed.widgets.Editor(model_cls=framed.widgets.LineTextModel)
+
+        self.add(self.label)
+        self.add(self.prompt)
+
+    def arrange(self):
+        layout = self.flex()
+        layout.set_row_weight(0, 1)
+        layout.set_row_weight(2, 1)
+        layout.add(self.label, row=1, weight=1)
+        layout.add(self.prompt, row=1, weight=3)
 
 
 class NotepadApp(framed.App):
@@ -74,8 +96,9 @@ class NotepadApp(framed.App):
         focus_cap = FocusCapture.capture
         if ch == ord('i'):
             self.focus(self.notepad.editor)
-        elif ch == ord('r'):
-            self.focus(self.title.title)
+        elif ch == framed.keys.CTRL_O:
+            self.dialog = self.new_free_panel(OpenDialog, region=self.get_centered_region(5, 50))
+            self.focus(self.dialog.prompt)
         elif ch == framed.keys.CTRL_S:
             self.save()
         else:
@@ -92,5 +115,7 @@ def main(stdscr):
 
 
 if __name__ == '__main__':
+    import logging
+    logging.basicConfig(format="[%(levelname)s %(name)s] %(message)s", level=logging.DEBUG, handlers=[logging.FileHandler("/tmp/pylog", mode="w")])
     curses.wrapper(main)
 
