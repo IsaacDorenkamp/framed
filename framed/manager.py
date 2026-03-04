@@ -48,6 +48,16 @@ class Manager(metaclass=ABCMeta):
         self._free_panels.remove(panel)
         self.blit()
 
+    def set_screen_size(self, size: vec2):
+        self.arrange(size)
+        self.__adjust_free_panels(size)
+
+    def __adjust_free_panels(self, size: vec2):
+        for panel in self._free_panels:
+            # TODO: implement
+            pass
+
+
     @abstractmethod
     def add_panel(self, panel: Panel, *args, **kwargs):
         """

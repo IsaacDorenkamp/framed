@@ -144,7 +144,7 @@ class App:
         self.__stdscr.nodelay(True)
 
         if self.__manager is not None:
-            self.__manager.arrange(self.__size)
+            self.__manager.set_screen_size(self.__size)
             self.__manager.refresh()
 
         while self.__running:
@@ -157,7 +157,7 @@ class App:
                 self.quit()
             elif ch == curses.KEY_RESIZE:
                 if self.__manager is not None:
-                    self.__manager.arrange(vec2(*self.__stdscr.getmaxyx()))
+                    self.__manager.set_screen_size(vec2(*self.__stdscr.getmaxyx()))
                     self.__manager.refresh()
                     continue
 
