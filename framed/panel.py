@@ -10,8 +10,6 @@ from .layout.grid import GridLayout
 from .struct import rect2, vec2
 from .widgets import Widget
 
-from . import _log
-
 
 class Panel(metaclass=ABCMeta):
     __window: curses.window
