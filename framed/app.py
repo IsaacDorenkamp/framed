@@ -126,6 +126,15 @@ class App:
 
         self.__manager.remove_free_panel(panel)
 
+    # --- Utilities ---
+    def get_centered_region(self, h: int, w: int) -> rect2:
+        size = vec2(h, w)
+        if size.y > self.__size.y or size.x > self.__size.x:
+            raise ValueError(f"size '{size}' exceeds screen size in at least one dimension")
+
+        diff = self.__size.y - size.y, self.__size.x - size.x
+        return rect2(y=diff[0] // 2, x=diff[1] // 2, h=size.y, w=size.x)
+
     # --- Mainloop ---
     def run(self):
         _log.info("Running application")
