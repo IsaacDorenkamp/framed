@@ -104,6 +104,10 @@ class NotepadApp(framed.App):
         elif ch == framed.keys.CTRL_O:
             self.dialog = self.new_free_panel(OpenDialog, region=self.get_centered_region(5, 50))
             self.focus(self.dialog.prompt)
+        elif ch == framed.keys.CTRL_B:
+            if self.dialog is not None:
+                self.dialog.close()
+                self.dialog = None
         elif ch == framed.keys.CTRL_S:
             self.save()
         else:

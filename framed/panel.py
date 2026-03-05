@@ -117,6 +117,8 @@ class Panel(metaclass=ABCMeta):
         return False
 
     def blit(self):
+        # force window to redraw
+        self.__window.touchwin()
         self.__window.refresh()
 
     @property
@@ -145,6 +147,16 @@ class Panel(metaclass=ABCMeta):
             raise ValueError("Owner is unset!")
         return self.__owner
 
+    @property
+    def owned(self) -> bool:
+        return self.__owner is not None
+
+    def _orphan(self):
+        self.__owner = None
+
+    def _adopt(self, owner: Manager):
+        self.__owner = owner
+
 
 class FreePanel(Panel):
     @abstractmethod
@@ -155,6 +167,10 @@ class FreePanel(Panel):
         new screen.
         """
         raise NotImplementedError()
+
+    def close(self):
+        if self.owned:
+            self._owner.remove_free_panel(self)
 
 
 if typing.TYPE_CHECKING:

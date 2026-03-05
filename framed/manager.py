@@ -48,6 +48,7 @@ class Manager(metaclass=ABCMeta):
 
     def remove_free_panel(self, panel: FreePanel):
         self._free_panels.remove(panel)
+        panel._orphan()
         self.blit()
 
     def set_screen_size(self, size: vec2):
@@ -363,6 +364,7 @@ class MultiplexManager(Manager):
 
     def blit(self):
         for panel in self.__panels:
+            from . import _log
             panel.blit()
 
     # --- MultiplexManager-specific methods ---

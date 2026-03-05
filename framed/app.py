@@ -3,13 +3,14 @@ import enum
 import typing
 
 from .manager import Manager, StackManager, MultiplexManager, Direction
-from .panel import Panel
+from .panel import FreePanel, Panel
 from .struct import rect2, vec2
 from .widgets import FocusHolder
 from . import _log
 
 
 PanelType = typing.TypeVar("PanelType", bound=Panel)
+FreePanelType = typing.TypeVar("FreePanelType", bound=FreePanel)
 
 
 class AppError(Exception):
@@ -112,7 +113,7 @@ class App:
 
 
     # --- Free Panels (Dialogs) ---
-    def new_free_panel(self, panel_type: type[PanelType], region: rect2) -> PanelType:
+    def new_free_panel(self, panel_type: type[FreePanelType], region: rect2) -> FreePanelType:
         if self.__manager is None:
             raise AppError("No manager assigned!")
 
@@ -120,7 +121,7 @@ class App:
         self.__manager.add_free_panel(new_panel)
         return new_panel
 
-    def destroy_free_panel(self, panel: Panel):
+    def destroy_free_panel(self, panel: FreePanel):
         if self.__manager is None:
             raise AppError("No manager assigned!")
 
