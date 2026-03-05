@@ -128,14 +128,10 @@ class App:
 
     # --- Utilities ---
     def get_centered_region(self, h: int, w: int) -> rect2:
-        size = vec2(h, w)
-        if size.y > self.__size.y or size.x > self.__size.x:
-            raise ValueError(f"size '{size}' exceeds screen size in at least one dimension")
+        if self.__manager is None:
+            raise AppError("No manager assigned!")
 
-        diff = self.__size.y - size.y, self.__size.x - size.x
-        from . import _log
-        _log.debug(f"diff: {diff}")
-        return rect2(y=diff[0] // 2, x=diff[1] // 2, h=size.y, w=size.x)
+        return self.__manager.get_centered_region(h, w)
 
     # --- Mainloop ---
     def run(self):

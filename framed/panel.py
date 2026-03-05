@@ -139,6 +139,23 @@ class Panel(metaclass=ABCMeta):
             self.render()
             curses.doupdate()
 
+    @property
+    def _owner(self) -> Manager:
+        if self.__owner is None:
+            raise ValueError("Owner is unset!")
+        return self.__owner
+
+
+class FreePanel(Panel):
+    @abstractmethod
+    def reposition(self, size: vec2):
+        """
+        Called when the application resizes, allowing
+        free panels to position themselves within the
+        new screen.
+        """
+        raise NotImplementedError()
+
 
 if typing.TYPE_CHECKING:
     from .manager import Manager

@@ -6,7 +6,6 @@ import framed.keys
 import framed.manager
 import framed.palette
 import framed.widgets
-from framed.widgets.widget import FocusHolder
 
 
 class TitlePanel(framed.Panel):
@@ -46,7 +45,7 @@ class StatusPanel(framed.Panel):
         layout.add(self.status, row=0, col=0)
 
 
-class OpenDialog(framed.Panel):
+class OpenDialog(framed.FreePanel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
         self.bordered = True
@@ -63,6 +62,12 @@ class OpenDialog(framed.Panel):
         layout.set_row_weight(2, 1)
         layout.add(self.label, row=1, weight=1)
         layout.add(self.prompt, row=1, weight=3)
+
+    def reposition(self, size: framed.vec2):
+        new_size = framed.vec2(min(size.y, 5), min(size.x, 50))
+        new_region = self._owner.get_centered_region(*new_size)
+        self.set_position(framed.vec2(new_region.y, new_region.x))
+        self.set_size(framed.vec2(new_region.h, new_region.w))
 
 
 class NotepadApp(framed.App):

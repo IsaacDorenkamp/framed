@@ -3,7 +3,7 @@ import curses
 from dataclasses import dataclass
 import enum
 
-from .panel import Panel
+from .panel import FreePanel, Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
 from . import _log
@@ -33,27 +33,35 @@ class Manager(metaclass=ABCMeta):
     """
 
     _stdscr: curses.window
-    _free_panels: list[Panel]
+    _size: vec2
+    _free_panels: list[FreePanel]
 
     def __init__(self, stdscr: curses.window):
         self._stdscr = stdscr
+        self._size = vec2(*stdscr.getmaxyx())
         self._free_panels = []
 
-    def add_free_panel(self, panel: Panel):
+    def add_free_panel(self, panel: FreePanel):
         self._free_panels.append(panel)
         panel.render()
         self._stdscr.refresh()
 
-    def remove_free_panel(self, panel: Panel):
+    def remove_free_panel(self, panel: FreePanel):
         self._free_panels.remove(panel)
         self.blit()
 
     def set_screen_size(self, size: vec2):
+        self._size = size
         self.arrange(size)
         self.__adjust_free_panels(size)
 
     def __adjust_free_panels(self, size: vec2):
         for panel in self._free_panels:
+            # allow panel to reposition itself
+            panel.reposition(size)
+
+            # if the panel doesn't manage to bring itself
+            # into the boundaries, force it
             far_y = panel.position.y + panel.size.y
             far_x = panel.position.x + panel.size.x
             if far_y >= size.y or far_x >= size.x:
@@ -72,6 +80,14 @@ class Manager(metaclass=ABCMeta):
                 new_x = size.x
 
             panel.set_size(vec2(new_y, new_x))
+
+    def get_centered_region(self, h: int, w: int) -> rect2:
+        size = vec2(h, w)
+        if size.y > self._size.y or size.x > self._size.x:
+            raise ValueError(f"size '{size}' exceeds screen size in at least one dimension")
+
+        diff = self._size.y - size.y, self._size.x - size.x
+        return rect2(y=diff[0] // 2, x=diff[1] // 2, h=size.y, w=size.x)
 
     @abstractmethod
     def add_panel(self, panel: Panel, *args, **kwargs):

@@ -1,7 +1,6 @@
 import math
 import typing
 
-from . import _log
 
 
 def distribute(amount: int, weights: typing.Sequence[int]) -> list[int]:

@@ -6,7 +6,7 @@ class ColorError(Exception):
     pass
 
 
-type ColorInfo = tuple[str, int]
+ColorInfo = tuple[str, int]
 
 default_color = "default"
 default_color_info = ("default", -1)

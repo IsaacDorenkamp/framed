@@ -142,7 +142,7 @@ class LineTextModel(TextModel):
             raise TextModelError(f"column '{location.col}' out of range")
 
         if "\n" in text:
-            raise TextModelError(f"cannot insert newline into single-line model!")
+            raise TextModelError("cannot insert newline into single-line model!")
 
         self.__text = self.__text[:location.col] + text + self.__text[location.col:]
 
