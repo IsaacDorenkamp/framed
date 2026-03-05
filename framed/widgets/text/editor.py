@@ -3,10 +3,10 @@ import enum
 import functools
 import typing
 
+from ... import keys
+from ...event import ChangeEvent
 from ..widget import CursorMode, FocusHolder
 from . import model
-
-from ... import keys
 
 
 T = typing.TypeVar("T", bound=model.TextModel)
@@ -67,16 +67,19 @@ class Editor(FocusHolder):
     __mode: EditorMode
 
     __bindings: dict[int, EditorAction]
-    __command_count: int
+    __commands: int
 
-    def __init__(self, text: str = "", model_cls: type[T] = model.SimpleTextModel):
-        super().__init__(greedy=True)
+    __emit_on_key: bool
+
+    def __init__(self, text: str = "", model_cls: type[T] = model.SimpleTextModel, emit_on_key: bool = False):
+        super().__init__(greedy=True, enabled_events=[ChangeEvent.tag])
         self.__model = model_cls(text=text)
         self.__offset = 0, 0
         self.__cursor = model.TextLocation(0, 0)
         self.__mode = EditorMode.command
         self.__bindings = Editor._DEFAULT_BINDINGS.copy()
-        self.__command_count = 0
+        self.__commands = 0
+        self.__emit_on_key = emit_on_key
 
     def on_focus(self):
         if not self.has_commands:
@@ -89,6 +92,8 @@ class Editor(FocusHolder):
 
     def on_unfocus(self):
         self.cursor(CursorMode.hidden)
+        if not self.__emit_on_key:
+            self._emit(ChangeEvent[str](self, self.__model.get()))
 
     def __insert(self, ch: int):
         # NOTE: This checks if the input character is an ASCII character.
@@ -183,6 +188,8 @@ class Editor(FocusHolder):
             handled = self.__insert(ch)
             if not handled:
                 handled = self.__navigate(ch)
+            elif self.__emit_on_key:
+                self._emit(ChangeEvent[str](self, self.__model.get()))
         else:
             handled = self.__navigate(ch)
             if not handled:
@@ -267,8 +274,7 @@ class Editor(FocusHolder):
                 if action.is_command_action:
                     self.__commands -= 1
                 del self.__bindings[key]
-
-        if action is not None:
+        elif action is not None:
             keys = list(self.__bindings.keys())
             for key in keys:
                 self.__commands -= 1
@@ -293,5 +299,5 @@ class Editor(FocusHolder):
 
     @property
     def has_commands(self) -> bool:
-        return self.__command_count > 0
+        return self.__commands > 0
 

@@ -2,6 +2,7 @@ import curses
 
 from framed.app import FocusCapture
 from framed.const import HAlign
+import framed.event
 import framed.keys
 import framed.manager
 import framed.palette
@@ -11,11 +12,23 @@ import framed.widgets
 class TitlePanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.title = framed.widgets.Label("Untitled File")
+        self.title = framed.widgets.Label("Untitled")
+        self.title.italic = True
         self.add(self.title)
 
     def set_title(self, title: str):
+        self.title.italic = False
         self.title.set_text(title)
+
+    def clear_title(self):
+        self.title.italic = True
+        self.title.set_text("Untitled")
+
+    def get(self) -> str | None:
+        if self.title.italic:
+            return None
+        else:
+            return self.title.get_text()
 
     def arrange(self):
         layout = self.grid()
@@ -52,6 +65,35 @@ class OpenDialog(framed.FreePanel):
 
         self.label = framed.widgets.Label("Open: ", align=HAlign.RIGHT)
         self.prompt = framed.widgets.Editor(model_cls=framed.widgets.LineTextModel)
+        self.prompt.bind(framed.keys.ENTER, framed.widgets.EditorAction.edit_finish)
+        self.prompt.unbind(framed.keys.ESCAPE)
+
+        self.add(self.label)
+        self.add(self.prompt)
+
+    def arrange(self):
+        layout = self.flex()
+        layout.set_row_weight(0, 1)
+        layout.set_row_weight(2, 1)
+        layout.add(self.label, row=1, weight=1)
+        layout.add(self.prompt, row=1, weight=3)
+
+    def reposition(self, size: framed.vec2):
+        new_size = framed.vec2(min(size.y, 5), min(size.x, 50))
+        new_region = self._owner.get_centered_region(*new_size)
+        self.set_position(framed.vec2(new_region.y, new_region.x))
+        self.set_size(framed.vec2(new_region.h, new_region.w))
+
+
+class SaveDialog(framed.FreePanel):
+    def __init__(self, region: framed.rect2, owner: framed.Manager):
+        super().__init__(region, owner)
+        self.bordered = True
+
+        self.label = framed.widgets.Label("Save: ", align=HAlign.RIGHT)
+        self.prompt = framed.widgets.Editor(model_cls=framed.widgets.LineTextModel)
+        self.prompt.bind(framed.keys.LF, framed.widgets.EditorAction.edit_finish)
+        self.prompt.unbind(framed.keys.ESCAPE)
 
         self.add(self.label)
         self.add(self.prompt)
@@ -86,16 +128,17 @@ class NotepadApp(framed.App):
 
         self.set_control_handler(self.on_input)
 
-    def save(self):
-        filename = self.title.title.get_text()
+    def save(self, filename: str) -> bool:
         try:
-            with open(filename, "w") as fp:
+            with open(filename, "w", encoding="ascii") as fp:
                 fp.write(self.notepad.editor.get_text())
             self.status.status.foreground = "green"
             self.status.status.set_text(f"Saved to {filename}")
+            return True
         except IOError as err:
             self.status.status.foreground = "red"
             self.status.status.set_text(f"Could not write to file: {err}")
+            return False
 
     def on_input(self, ch: int):
         focus_cap = FocusCapture.capture
@@ -103,17 +146,41 @@ class NotepadApp(framed.App):
             self.focus(self.notepad.editor)
         elif ch == framed.keys.CTRL_O:
             self.dialog = self.new_free_panel(OpenDialog, region=self.get_centered_region(5, 50))
+            self.dialog.prompt.listen(framed.event.ChangeEvent, self.on_open_file_change)
             self.focus(self.dialog.prompt)
-        elif ch == framed.keys.CTRL_B:
-            if self.dialog is not None:
-                self.dialog.close()
-                self.dialog = None
         elif ch == framed.keys.CTRL_S:
-            self.save()
+            filename = self.title.get()
+            if filename is not None:
+                self.save(filename)
+            else:
+                self.dialog = self.new_free_panel(SaveDialog, region=self.get_centered_region(5, 50))
+                self.dialog.prompt.listen(framed.event.ChangeEvent, self.on_save_file_change)
+                self.focus(self.dialog.prompt)
+        elif ch == framed.keys.CTRL_N:
+            self.title.clear_title()
+            self.notepad.editor.set_text("")
         else:
             focus_cap = FocusCapture.passthrough
 
         return focus_cap
+
+    def on_open_file_change(self, event: framed.event.ChangeEvent[str]):
+        desired_file = event.value
+        try:
+            with open(desired_file, "r", encoding="ascii") as fp:
+                content = fp.read()
+            self.title.set_title(desired_file)
+            self.notepad.editor.set_text(content)
+            self.dialog.close()
+        except IOError as err:
+            self.status.status.foreground = "red"
+            self.status.status.set_text(f"Could not open file: {err}")
+
+    def on_save_file_change(self, event: framed.event.ChangeEvent[str]):
+        desired_value = event.value
+        self.dialog.close()
+        if self.save(desired_value):
+            self.title.set_title(desired_value)
 
 
 def main(stdscr):
