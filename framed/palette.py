@@ -14,6 +14,7 @@ default_color_info = ("default", -1)
 
 __can_change: bool = False
 __colors: dict[str, int] = {}
+__aliases: dict[str, str] = {}
 __color_id: int = 0
 __pairs:  dict[tuple[int, int], int] = {}
 __pair_id: int = 1
@@ -47,7 +48,7 @@ def create_color(name: str, r: int, g: int, b: int):
 
     global __color_id
     if __color_id >= curses.COLORS:
-        raise ColorError("Could not create color (terminal allows %d")
+        raise ColorError("Could not create color (terminal allows %d)")
 
     if name in __colors:
         raise ColorError("Color '%s' already exists" % name)
@@ -75,8 +76,29 @@ def set_color(name: str, r: int, g: int, b: int):
         raise ColorError("Failed to set color (%d, %d, %d)" % (r, g, b)) from err
 
 
+def alias(color: str, alias: str):
+    if alias in __colors:
+        raise ValueError(f"'{alias}' is already a named color!")
+
+    if color not in __colors:
+        raise ValueError(f"'{color}' is not a named color!")
+
+    __aliases[alias] = color
+
+
+def is_alias(color: str):
+    return color in __aliases
+
+
+def __aliased(name: str) -> str:
+    if name in __aliases:
+        return __aliases[name]
+
+    return name
+
+
 def color_pair(foreground: str, background: str) -> int:
-    pair = __colors[foreground], __colors[background]
+    pair = __colors[__aliased(foreground)], __colors[__aliased(background)]
     if pair not in __pairs:
         global __pair_id
         curses.init_pair(__pair_id, *pair)
@@ -87,7 +109,7 @@ def color_pair(foreground: str, background: str) -> int:
 
 def validate(color: str) -> tuple[str, int]:
     try:
-        return color, __colors[color]
+        return color, __colors[__aliased(color)]
     except KeyError:
         raise ColorError(f"No such color: {color}")
 
