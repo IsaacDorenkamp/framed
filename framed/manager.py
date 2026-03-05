@@ -54,9 +54,24 @@ class Manager(metaclass=ABCMeta):
 
     def __adjust_free_panels(self, size: vec2):
         for panel in self._free_panels:
-            # TODO: implement
-            pass
+            far_y = panel.position.y + panel.size.y
+            far_x = panel.position.x + panel.size.x
+            if far_y >= size.y or far_x >= size.x:
+                diff_y = max(0, far_y - size.y)
+                diff_x = max(0, far_x - size.x)
+                panel.set_position(vec2(
+                    max(0, panel.position.y - diff_y),
+                    max(0, panel.position.x - diff_x)
+                ))
 
+            new_y, new_x = panel.size
+            if new_y > size.y:
+                new_y = size.y
+
+            if new_x > size.x:
+                new_x = size.x
+
+            panel.set_size(vec2(new_y, new_x))
 
     @abstractmethod
     def add_panel(self, panel: Panel, *args, **kwargs):

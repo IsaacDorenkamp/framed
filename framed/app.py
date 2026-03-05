@@ -133,6 +133,8 @@ class App:
             raise ValueError(f"size '{size}' exceeds screen size in at least one dimension")
 
         diff = self.__size.y - size.y, self.__size.x - size.x
+        from . import _log
+        _log.debug(f"diff: {diff}")
         return rect2(y=diff[0] // 2, x=diff[1] // 2, h=size.y, w=size.x)
 
     # --- Mainloop ---
@@ -157,7 +159,8 @@ class App:
                 self.quit()
             elif ch == curses.KEY_RESIZE:
                 if self.__manager is not None:
-                    self.__manager.set_screen_size(vec2(*self.__stdscr.getmaxyx()))
+                    self.__size = vec2(*self.__stdscr.getmaxyx())
+                    self.__manager.set_screen_size(self.__size)
                     self.__manager.refresh()
                     continue
 
