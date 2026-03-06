@@ -160,7 +160,6 @@ class ListBox(FocusHolder, typing.Generic[T]):
             self.scrollok = False
             self.__scroll -= 1
 
-
     def __render_row(self, index: int):
         if (
             index < self.__scroll or
@@ -246,6 +245,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
         if self.__cursor >= index:
             self.__cursor -= 1
 
+        # FIX: Correctly re-render after removing.
         can_update = self.request_update()
         if can_update:
             self.__render_row(prev_cursor)
