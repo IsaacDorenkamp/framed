@@ -25,6 +25,7 @@ class ListBoxAction(enum.Enum):
     nav_page_down = "nav_page_down"
 
     select = "select"
+    cancel = "cancel"
 
 
 class ListBox(FocusHolder, typing.Generic[T]):
@@ -34,6 +35,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
         keys.PGDN: ListBoxAction.nav_page_down,
         keys.PGUP: ListBoxAction.nav_page_up,
         keys.ENTER: ListBoxAction.select,
+        keys.ESCAPE: ListBoxAction.cancel,
     }
 
     __items: list[tuple[str, T | None]]
@@ -99,6 +101,9 @@ class ListBox(FocusHolder, typing.Generic[T]):
                 selection = self.__items[self.__selection]
                 self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T](selection[0], self.__selection, selection[1])))
                 self._relinquish()
+            case ListBoxAction.cancel:
+                self._relinquish()
+                self.__adjust_scroll()
 
         if dirty:
             self._window.refresh()
