@@ -375,7 +375,6 @@ class MultiplexManager(Manager):
 
     def blit(self):
         for panel in self.__panels:
-            from . import _log
             panel.blit()
 
     # --- MultiplexManager-specific methods ---
@@ -399,9 +398,6 @@ class MultiplexManager(Manager):
 
         if len(node.children) != len(proportions):
             raise ManagerError("Needed %d proportions, got %d instead" % (len(node.children), len(proportions)))
-
-        if sum(proportions) > 1:
-            raise ManagerError("Sum of proportions must not exceed 1!")
 
         for child, portion in zip(node.children, proportions):
             child.value.portion = portion
