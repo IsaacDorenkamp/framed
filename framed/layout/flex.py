@@ -6,7 +6,6 @@ from .layout import Layout
 from ..struct import rect2, vec2
 from ..widgets import Widget
 from .. import util
-from .. import _log
 
 
 @dataclass
@@ -57,7 +56,6 @@ class FlexLayout(Layout):
 
             column_weights = [item.weight for item in row_info.items]
             column_widths = util.distribute(self.window_size.x, column_weights)
-            _log.debug(f"distributing {self.window_size.x} units: {column_widths}")
             x_offset = offset.x
             for column, item in enumerate(row_info.items):
                 width = column_widths[column]
