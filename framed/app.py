@@ -151,6 +151,7 @@ class App:
         _log.info("Running application")
         curses.set_escdelay(25)
         curses.raw()
+        curses.curs_set(0)
         self.__stdscr.keypad(True)
         self.__stdscr.nodelay(True)
 
