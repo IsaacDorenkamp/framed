@@ -1,40 +1,41 @@
 import curses
 import logging
-import random
-import string
 
 import framed
+import framed.event
+import framed.keys
 import framed.palette
 import framed.widgets
 
 
-class TestPanel(framed.Panel):
+class ListBoxPanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.label = framed.widgets.Label("Label")
-        self.add(self.label)
-
-    def set_label_text(self, text: str):
-        self.label.set_text(text)
-
-    def set_label_colors(self, foreground: str, background: str):
-        self.label.foreground = foreground
-        self.label.background = background
+        self.box = framed.widgets.ListBox()
+        self.box.bind(framed.keys.j, framed.widgets.ListBoxAction.nav_down)
+        self.box.bind(framed.keys.k, framed.widgets.ListBoxAction.nav_up)
+        self.box.page = 20
+        self.add(self.box)
+        for i in range(150):
+            self.box.add_item("A" * (i + 1), data=i)
 
     def arrange(self):
-        fixed = self.fixed()
-        fixed.add(self.label, 0, 0, 1, 40)
+        layout = self.fixed()
+        layout.add(self.box, 0, 0, 1000, 1000)
 
 
-class EditorPanel(framed.Panel):
+class ReportPanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
-        self.editor = framed.widgets.Editor("these are\nsome lines\nof text")
+        self.editor = framed.widgets.Editor()
         self.add(self.editor)
 
     def arrange(self):
-        fixed = self.fixed()
-        fixed.add(self.editor, 0, 0, 1000, 1000)
+        layout = self.fixed()
+        layout.add(self.editor, 0, 0, 1000, 1000)
+
+    def accept_report(self, event: framed.event.ChangeEvent[framed.widgets.ListBoxChange]):
+        self.editor.append(f"Selected {event.value.label} (index {event.value.index})\n")
 
 
 def main(stdscr: curses.window):
@@ -42,36 +43,26 @@ def main(stdscr: curses.window):
     app = framed.App(stdscr)
     manager = app.multiplex()
 
-    title, content, status = manager.split(3, direction=framed.Direction.vertical)
-    manager.set_proportions((), (0, 1, 0))
+    list_split, report_split = manager.split(2, direction=framed.Direction.vertical)
+    manager.set_proportions(path=(), proportions=(3, 1))
+    list_panel = app.new_panel(ListBoxPanel, split_path=list_split)
+    report_panel = app.new_panel(ReportPanel, split_path=report_split)
 
-    title_panel = app.new_panel(TestPanel, split_path=title)
-    content_panel = app.new_panel(EditorPanel, split_path=content)
-    status_panel = app.new_panel(TestPanel, split_path=status)
-
-    title_panel.set_label_text("Title")
-    title_panel.label.bold = True
-
-    status_panel.set_label_text("Status")
-    status_panel.label.underline = True
+    list_panel.box.listen(framed.event.ChangeEvent, report_panel.accept_report)
 
     def handle_input(ch: int):
         if ch == 3:
             app.quit()
-        elif ch == ord('i'):
-            app.focus(content_panel.editor)
-            return framed.FocusCapture.capture
-        elif ch == ord("c"):
-            colors = list(framed.palette.get_color_names())
-            foreground = random.choice(colors)
-            colors.remove(foreground)
-            background = random.choice(colors)
+        elif ch == framed.keys.l:
+            app.focus(list_panel.box)
+        elif ch == framed.keys.L:
+            list_panel.box.set_selection(0)
+        elif ch == framed.keys.R:
+            app.focus(report_panel.editor)
+        else:
+            return framed.FocusCapture.passthrough
 
-            for panel in (title_panel, status_panel):
-                panel.set_label_text("".join([random.choice(string.ascii_letters) for _ in range(25)]))
-                panel.set_label_colors(foreground, background)
-
-        return framed.FocusCapture.passthrough
+        return framed.FocusCapture.capture
 
     app.set_control_handler(handle_input)
 
