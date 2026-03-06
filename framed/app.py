@@ -43,13 +43,12 @@ class FocusState:
             self.__focused.on_focus()
 
     def capture_input(self, ch: int) -> FocusCapture:
-        if self.__focused is not None:
-            if self.__focused.greedy:
-                consumed = self.__focused.on_input(ch)
-                if consumed:
-                    return FocusCapture.capture
-                else:
-                    return FocusCapture.passthrough
+        if self.__focused is not None and self.__focused.greedy:
+            consumed = self.__focused.on_input(ch)
+            if consumed:
+                return FocusCapture.capture
+            else:
+                return FocusCapture.passthrough
 
         return FocusCapture.uncaught
 
@@ -66,6 +65,7 @@ class FocusState:
         if self.__focused is not None:
             root = self.__focused.get_root()
             if root is None or not root.owned:
+                self.__focused._focused = False
                 self.__focused = None
 
 
@@ -185,7 +185,7 @@ class App:
                 if result is FocusCapture.capture:
                     continue
 
-            if captured == FocusCapture.passthrough:
+            if captured == FocusCapture.uncaught:
                 self.__focus.on_input(ch)
 
     def quit(self):
