@@ -128,6 +128,7 @@ class Editor(FocusHolder):
                     try:
                         result = self.__model.insert(self.__cursor, "\n")
                         self.__cursor = result.after
+                        self.__adjust_offset()
                         self._repaint()
                         return True
                     except model.TextModelError:
@@ -205,11 +206,11 @@ class Editor(FocusHolder):
         new_line, new_col = self.__offset
 
         diff_y_above = self.__offset[0] - self.__cursor.line
-        diff_y_below = self.__cursor.line - (self.__offset[0] + self.size[0])
+        diff_y_below = self.__cursor.line - (self.__offset[0] + self.size[0]) + 1
         if diff_y_above > 0:
-            new_line = self.__offset[0] - diff_y_above
+            new_line -= diff_y_above
         elif diff_y_below > 0:
-            new_line = self.__cursor.line - (self.__offset[0] + self.size[0])
+            new_line += diff_y_below
 
         diff_x_left = self.__offset[1] - self.__cursor.col
         diff_x_right = self.__cursor.col - (self.__offset[1] + self.size[1]) + 1
@@ -241,8 +242,8 @@ class Editor(FocusHolder):
                 continue
             line = self.__model.get(
                 model.TextRange(
-                    model.TextLocation(line=window_line, col=self.__offset[1]),
-                    model.TextLocation(line=window_line, col=end)
+                    model.TextLocation(line=line_no, col=self.__offset[1]),
+                    model.TextLocation(line=line_no, col=end)
                 )
             )
             self._window.move(window_line, 0)
@@ -268,7 +269,7 @@ class Editor(FocusHolder):
     def unbind(self, key: int = -1, action: EditorAction | None = None):
         if key == -1 and action is None:
             raise ValueError("Must provide either a key code or an action.")
-        if key != -1 and action is not None:
+        elif key != -1 and action is not None:
             raise ValueError("Must provide either a key code or an action, not both.")
 
         if key != -1:
@@ -299,6 +300,19 @@ class Editor(FocusHolder):
     def set_text(self, text: str):
         self.__cursor = self.__model.assign(text)
         self._repaint()
+
+    def append(self, text: str, scroll: bool = True):
+        end_line = max(0, self.__model.lines - 1)
+        end_col = self.__model.get_line_length(end_line)
+        result = self.__model.insert(
+            model.TextLocation(line=end_line, col=end_col),
+            text=text,
+        )
+        if scroll:
+            self.__cursor = result.after
+            self.__adjust_offset()
+        
+        self.invalidate()
 
     @property
     def has_commands(self) -> bool:
