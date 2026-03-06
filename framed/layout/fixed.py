@@ -37,7 +37,7 @@ class FixedLayout(Layout):
             actual_end_y = min(actual_y + position.h - 1, self.window_size.y)
             actual_end_x = min(actual_x + position.w - 1, self.window_size.x)
             region = rect2(
-                actual_y, actual_x, actual_end_y - actual_y + 1, actual_end_x - actual_x + 1
+                actual_y, actual_x, actual_end_y - actual_y, actual_end_x - actual_x
             )
             self.__constrained[widget] = region
             widget.set_size(vec2(region.h, region.w))
