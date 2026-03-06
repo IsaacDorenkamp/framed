@@ -14,6 +14,9 @@ class ManagerError(Exception):
     pass
 
 
+FLAG_CHECK_FOCUS = 1
+
+
 class Manager(metaclass=ABCMeta):
     """
     Similar in function to a Layout, a Manager is
@@ -35,11 +38,13 @@ class Manager(metaclass=ABCMeta):
     _stdscr: curses.window
     _size: vec2
     _free_panels: list[FreePanel]
+    _flags: int
 
     def __init__(self, stdscr: curses.window):
         self._stdscr = stdscr
         self._size = vec2(*stdscr.getmaxyx())
         self._free_panels = []
+        self._flags = 0
 
     def add_free_panel(self, panel: FreePanel):
         self._free_panels.append(panel)
@@ -50,6 +55,7 @@ class Manager(metaclass=ABCMeta):
         self._free_panels.remove(panel)
         panel._orphan()
         self.blit()
+        self._flags |= FLAG_CHECK_FOCUS
 
     def set_screen_size(self, size: vec2):
         self._size = size
@@ -89,6 +95,11 @@ class Manager(metaclass=ABCMeta):
 
         diff = self._size.y - size.y, self._size.x - size.x
         return rect2(y=diff[0] // 2, x=diff[1] // 2, h=size.y, w=size.x)
+
+    def check_flags(self) -> int:
+        result = self._flags
+        self._flags = 0
+        return result
 
     @abstractmethod
     def add_panel(self, panel: Panel, *args, **kwargs):

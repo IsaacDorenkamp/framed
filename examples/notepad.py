@@ -159,10 +159,18 @@ class NotepadApp(framed.App):
         elif ch == framed.keys.CTRL_N:
             self.title.clear_title()
             self.notepad.editor.set_text("")
+        elif ch == framed.keys.ESCAPE:
+            self.close_dialog()
         else:
             focus_cap = FocusCapture.passthrough
 
         return focus_cap
+
+    def close_dialog(self):
+        dialog = getattr(self, "dialog", None)
+        if dialog is not None:
+            dialog.close()
+            self.dialog = None
 
     def on_open_file_change(self, event: framed.event.ChangeEvent[str]):
         desired_file = event.value
@@ -171,14 +179,14 @@ class NotepadApp(framed.App):
                 content = fp.read()
             self.title.set_title(desired_file)
             self.notepad.editor.set_text(content)
-            self.dialog.close()
+            self.close_dialog()
         except IOError as err:
             self.status.status.foreground = "red"
             self.status.status.set_text(f"Could not open file: {err}")
 
     def on_save_file_change(self, event: framed.event.ChangeEvent[str]):
         desired_value = event.value
-        self.dialog.close()
+        self.close_dialog()
         if self.save(desired_value):
             self.title.set_title(desired_value)
 

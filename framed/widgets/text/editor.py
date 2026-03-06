@@ -181,7 +181,7 @@ class Editor(FocusHolder):
 
     def __command(self, ch: int):
         # TODO: Commands!
-        pass
+        return False
 
     def on_input(self, ch: int):
         if self.__mode == EditorMode.edit:
@@ -190,10 +190,13 @@ class Editor(FocusHolder):
                 handled = self.__navigate(ch)
             elif self.__emit_on_key:
                 self._emit(ChangeEvent[str](self, self.__model.get()))
+
         else:
             handled = self.__navigate(ch)
             if not handled:
-                self.__command(ch)
+                handled = self.__command(ch)
+
+        return handled
         
     def __adjust_offset(self):
         """

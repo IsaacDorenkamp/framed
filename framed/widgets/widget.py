@@ -35,7 +35,7 @@ class EventHandler(typing.Protocol, typing.Generic[EventType]):
 class Widget(metaclass=ABCMeta):
     __window: curses.window | None
     __size: vec2
-    __parent: Panel | Widget | None
+    _parent: Panel | Widget | None
     __background: palette.ColorInfo
     __foreground: palette.ColorInfo
     __color_attr: int
@@ -49,7 +49,7 @@ class Widget(metaclass=ABCMeta):
     def __init__(self, scrollok: bool = False, enabled_events: list[str] | None = None):
         self.__window = None
         self.__size = vec2()
-        self.__parent = None
+        self._parent = None
         self.__background = palette.default_color_info
         self.__foreground = palette.default_color_info
         self.__color_attr = palette.color_pair(self.__background[0], self.__foreground[0])
@@ -120,16 +120,16 @@ class Widget(metaclass=ABCMeta):
         self.__size = size
 
     def request_update(self) -> bool:
-        if self.__parent is not None:
-            return self.__parent.request_update()
+        if self._parent is not None:
+            return self._parent.request_update()
 
         return False
 
     def _adopt(self, parent: Panel | Widget):
-        self.__parent = parent
+        self._parent = parent
 
     def _orphan(self):
-        self.__parent = None
+        self._parent = None
 
     # NOTE: While the default implementation simply calls window.bkgd()
     # this method is intended to allow implementation by subclasses to
@@ -185,6 +185,13 @@ class Widget(metaclass=ABCMeta):
         if self.windowed and self.request_update():
             self._repaint()
 
+    def get_root(self) -> Panel | None:
+        current = self
+        while isinstance(current, Widget):
+            current = current._parent
+
+        return current
+
     # --- Event Logic ---
     def listen(self, event_type: type[EventType], handler: EventHandler[EventType]):
         if event_type.tag not in self.__enabled_events:
@@ -230,7 +237,7 @@ class FocusHolder(Widget):
         raise NotImplementedError()
 
     @abstractmethod
-    def on_input(self, ch: int):
+    def on_input(self, ch: int) -> bool:
         raise NotImplementedError()
 
     @property

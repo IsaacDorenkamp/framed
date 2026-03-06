@@ -2,6 +2,7 @@ import curses
 import enum
 import typing
 
+from . import manager
 from .manager import Manager, StackManager, MultiplexManager, Direction
 from .panel import FreePanel, Panel
 from .struct import rect2, vec2
@@ -20,9 +21,11 @@ class AppError(Exception):
 class FocusCapture(enum.Enum):
     capture = 0
     passthrough = 1
+    uncaught = 2
 
 
 class FocusState:
+
     __focused: FocusHolder | None
     def __init__(self):
         self.__focused = None
@@ -39,13 +42,16 @@ class FocusState:
             self.__focused._focused = True
             self.__focused.on_focus()
 
-    def capture_input(self, ch: int) -> bool:
+    def capture_input(self, ch: int) -> FocusCapture:
         if self.__focused is not None:
             if self.__focused.greedy:
-                self.__focused.on_input(ch)
-                return True
+                consumed = self.__focused.on_input(ch)
+                if consumed:
+                    return FocusCapture.capture
+                else:
+                    return FocusCapture.passthrough
 
-        return False
+        return FocusCapture.uncaught
 
     def on_input(self, ch: int):
         if self.__focused is not None:
@@ -55,6 +61,12 @@ class FocusState:
         if self.__focused and not self.__focused.focused:
             self.__focused.on_unfocus()
             self.__focused = None
+
+    def check(self):
+        if self.__focused is not None:
+            root = self.__focused.get_root()
+            if root is None or not root.owned:
+                self.__focused = None
 
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
@@ -147,6 +159,9 @@ class App:
             self.__manager.refresh()
 
         while self.__running:
+            manager_flags = self.__manager.check_flags() if self.__manager else 0
+            if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
+                self.__focus.check()
             self.__focus.update()
 
             ch = self.__stdscr.getch()
@@ -162,7 +177,7 @@ class App:
                     continue
 
             captured = self.__focus.capture_input(ch)
-            if captured:
+            if captured == FocusCapture.capture:
                 continue
 
             if self.__control_handler:
@@ -170,7 +185,8 @@ class App:
                 if result is FocusCapture.capture:
                     continue
 
-            self.__focus.on_input(ch)
+            if captured == FocusCapture.passthrough:
+                self.__focus.on_input(ch)
 
     def quit(self):
         self.__running = False
