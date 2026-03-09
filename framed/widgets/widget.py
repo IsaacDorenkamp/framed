@@ -223,7 +223,7 @@ class Widget(metaclass=ABCMeta):
 class FocusHolder(Widget):
     __greedy: bool
     _focused: bool
-    def __init__(self, greedy: bool = False, scrollok: bool = False, enabled_events: list[str] | None = None):
+    def __init__(self, greedy: bool = True, scrollok: bool = False, enabled_events: list[str] | None = None):
         super().__init__(scrollok=scrollok, enabled_events=enabled_events)
         self.__greedy = greedy
         self._focused = False
