@@ -34,8 +34,8 @@ class FixedLayout(Layout):
         for widget, position in self.__positions.items():
             actual_y = min(position.y + offset.y, self.window_size.y - 1)
             actual_x = min(position.x + offset.x, self.window_size.x - 1)
-            actual_end_y = min(actual_y + position.h - 1, self.window_size.y)
-            actual_end_x = min(actual_x + position.w - 1, self.window_size.x)
+            actual_end_y = min(actual_y + position.h, self.window_size.y)
+            actual_end_x = min(actual_x + position.w, self.window_size.x)
             region = rect2(
                 actual_y, actual_x, actual_end_y - actual_y, actual_end_x - actual_x
             )

@@ -36,6 +36,7 @@ class OptionBox(FocusHolder, typing.Generic[T]):
     __predicted: tuple[int, str] | None
     __selected: int
     __placeholder: str
+    __cursor: int
 
     __bindings: dict[int, OptionBoxAction]
 
@@ -47,6 +48,7 @@ class OptionBox(FocusHolder, typing.Generic[T]):
         self.__predicted = None
         self.__selected = -1
         self.__placeholder = "No Selection"
+        self.__cursor = 0
 
         self.__bindings = OptionBox._DEFAULT_BINDINGS.copy()
 
@@ -119,6 +121,7 @@ class OptionBox(FocusHolder, typing.Generic[T]):
         self.cursor(CursorMode.light)
         self.__input = ""
         self.__predicted = None
+        self.__cursor = 0
         self._window.move(0, 0)
         self._window.clrtoeol()
         self._window.refresh()
@@ -127,6 +130,7 @@ class OptionBox(FocusHolder, typing.Generic[T]):
         self.cursor(CursorMode.hidden)
         self.__input = ""
         self.__predicted = None
+        self.__cursor = 0
         self.invalidate()
 
     def on_input(self, ch: int):
@@ -144,24 +148,18 @@ class OptionBox(FocusHolder, typing.Generic[T]):
             self.invalidate()
         elif 32 <= ch <= 126:
             letter = chr(ch)
-            predictions = self.__predict(letter)
+            predictions = self.__predict(self.__input + letter)
             if predictions:
                 if len(predictions) > 1:
                     self.__input += letter
-                    try:
-                        self._window.addch(letter)
-                    except curses.error:
-                        pass
-                    checkpoint = len(self.__input)
-                    available = self.size[1] - checkpoint
+                    self.__cursor += 1
                     self.__predicted = predictions[0]
-                    remainder = self.__predicted[1][checkpoint:]
-                    try:
-                        self._window.addnstr(remainder, available, curses.A_DIM)
-                    except curses.error:
-                        pass
-                    self._window.clrtoeol()
-                    self._window.move(0, min(len(self.__input), self.size[1] - 1))
+                    if self.__cursor < self.size[1]:
+                        try:
+                            self._window.addch(letter)
+                        except curses.error:
+                            pass
+                    self.__update_prediction()
                     self._window.refresh()
                 else:
                     # there is exactly one option, select it
@@ -177,17 +175,43 @@ class OptionBox(FocusHolder, typing.Generic[T]):
                     self.__emit_change()
                     self._relinquish()
             return True
+        elif ch == keys.BACKSPACE and self.__input:
+            self.__input = self.__input[:-1]
+            self.__cursor -= 1
+            end = min(self.__cursor, self.size[1] - 1)
+            self._window.move(0, end)
+            if self.__cursor <= end:
+                self._window.delch()
+            if self.__input:
+                predictions = self.__predict(self.__input)
+                self.__predicted = predictions[0]
+                self.__update_prediction()
+            else:
+                self.__predicted = None
+                self._window.clrtoeol()
+            self._window.refresh()
 
         return False
 
-    def __predict(self, added: str) -> list[tuple[int, str]]:
+    def __predict(self, check: str) -> list[tuple[int, str]]:
         results = []
-        check = self.__input + added
         for index, item in enumerate(self.__items):
             text = item[0]
             if text.startswith(check):
                 results.append((index, text))
         return results
+
+    def __update_prediction(self):
+        if self.__cursor < self.size[1] and self.__predicted:
+            checkpoint = len(self.__input)
+            available = self.size[1] - checkpoint
+            remainder = self.__predicted[1][checkpoint:]
+            try:
+                self._window.addnstr(remainder, available, curses.A_DIM)
+            except curses.error:
+                pass
+            self._window.clrtoeol()
+            self._window.move(0, min(len(self.__input), self.size[1] - 1))
 
     def __render_input(self):
         self._window.move(0, 0)

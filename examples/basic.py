@@ -53,7 +53,7 @@ class MiscPanel(framed.Panel):
 
     def arrange(self):
         layout = self.fixed()
-        layout.add(self.box, 2, 5, 1, 15)
+        layout.add(self.box, 2, 5, 1, 5)
 
     def on_change(self, event: framed.event.ChangeEvent):
         colors = list(framed.palette.get_color_names())
