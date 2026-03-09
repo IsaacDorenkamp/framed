@@ -6,7 +6,6 @@ import enum
 from .panel import FreePanel, Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
-from . import _log
 from . import util
 
 
@@ -238,12 +237,14 @@ class MultiplexManager(Manager):
     __splits: _tree[Split]  # scalars representing the portion of the screen which a split occupies
     __panels: list[Panel]
     __visible: list[Panel]
+    __bordered: bool
 
     def __init__(self, stdscr: curses.window, top_level_split_direction: Direction = Direction.horizontal):
         super().__init__(stdscr)
         self.__splits = _tree(Split(0, -1, rect2(0, 0, 0, 0), top_level_split_direction))
         self.__panels = []
         self.__visible = []
+        self.__bordered = True
 
     # --- Manager method implementations ---
     def add_panel(self, panel: Panel, split_path: tuple[int, ...]):
@@ -264,7 +265,9 @@ class MultiplexManager(Manager):
     def __arrange_split(self, split_node: _node[Split], region: rect2):
         split = split_node.value
         total_directional_space = region.w if split.direction == Direction.horizontal else region.h
-        directional_space = total_directional_space - (len(split_node.children) - 1)
+        directional_space = total_directional_space
+        if self.__bordered:
+            directional_space -= max(0, len(split_node.children) - 1)
         weights = [child.value.portion for child in split_node.children]
         sizes = util.distribute(directional_space, weights)
         if any(x == 0 for x in sizes):
@@ -285,7 +288,7 @@ class MultiplexManager(Manager):
                 panel.set_position(vec2(child.region.y, child.region.x))
                 self.__visible.append(panel)
 
-            consumed_space += sizes[index] + 1  # add one for border
+            consumed_space += sizes[index] + (1 if self.__bordered else 0)  # add one for border
             
             if child_node.children:
                 self.__arrange_split(child_node, child.region)
@@ -299,10 +302,12 @@ class MultiplexManager(Manager):
         self.__decorate(root)
 
     def __decorate(self, split_node: _node[Split]):
+        if not self.__bordered:
+            return
+
         split = split_node.value
         for index, child_node in enumerate(split_node.children):
             child = child_node.value
-            _log.info(f"region: {child.region}")
             if index > 0:
                 # draw border
                 if split.direction == Direction.horizontal:
@@ -401,4 +406,15 @@ class MultiplexManager(Manager):
 
         for child, portion in zip(node.children, proportions):
             child.value.portion = portion
+
+    @property
+    def bordered(self) -> bool:
+        return self.__bordered
+
+    @bordered.setter
+    def bordered(self, bordered: bool):
+        if bordered != self.__bordered:
+            self.__bordered = bordered
+            self.refresh()
+
 
