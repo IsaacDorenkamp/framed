@@ -57,8 +57,12 @@ def main(stdscr: curses.window):
             app.focus(list_panel.box)
         elif ch == framed.keys.L:
             list_panel.box.set_selection(0)
-        elif ch == framed.keys.R:
-            app.focus(report_panel.editor)
+        elif ch == framed.keys.DELETE:
+            index = list_panel.box.get_selection_index()
+            if index >= 0:
+                item_text = list_panel.box.get_item_text(index)
+                list_panel.box.remove_item(index)
+                report_panel.editor.append(f"Removed list item {item_text} (index {index})\n")
         else:
             return framed.FocusCapture.passthrough
 

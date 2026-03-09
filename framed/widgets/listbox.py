@@ -233,28 +233,52 @@ class ListBox(FocusHolder, typing.Generic[T]):
             raise ValueError(f"remove index must be between 0 and {len(self.__items) - 1}, inclusive")
 
         prev = self.__selection
-        if self.__selection == index:
-            # If we remove the selected item, clear the selection
-            self.__selection = -1
-        elif self.__selection > index:
-            # If we remove an item before the selection, adjust the
-            # selection index to compensate
+        if self.__selection >= index:
+            # If we remove an item at or before the selection, adjust the
+            # selection index to compensate. If selection is 0, then it
+            # will become -1, which is equivalent to "no selection."
             self.__selection -= 1
 
         prev_cursor = self.__cursor
         if self.__cursor >= index:
             self.__cursor -= 1
 
-        # FIX: Correctly re-render after removing.
         can_update = self.request_update()
         if can_update:
             self.__render_row(prev_cursor)
             self.__render_row(prev)
+            self.__render_row(self.__selection)
         self.__items.pop(index)
         if can_update:
-            self.__render_row(self.__cursor)
-            self.__render_row(self.__selection)
+            for i in range(index, index + self.size[0]):
+                self.__render_row(i)
             self._window.refresh()
+
+    def find_item_by_text(self, text: str) -> int:
+        for index, item in enumerate(self.__items):
+            if item[0] == text:
+                return index
+
+        return -1
+
+    def find_item(self, value: T) -> int:
+        for index, item in enumerate(self.__items):
+            if item[1] == value:
+                return index
+
+        return -1
+
+    def get_item_text(self, index: int) -> str:
+        if index < 0 or index >= len(self.__items):
+            raise ValueError(f"No item at index '{index}'")
+
+        return self.__items[index][0]
+
+    def get_item(self, index: int) -> T | None:
+        if index < 0 or index >= len(self.__items):
+            raise ValueError(f"No item at index '{index}'")
+
+        return self.__items[index][1]
 
     def get_selection_index(self) -> int:
         return self.__selection

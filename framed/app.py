@@ -123,7 +123,6 @@ class App:
     def clear_focus(self):
         self.__focus.set_focused(None)
 
-
     # --- Free Panels (Dialogs) ---
     def new_free_panel(self, panel_type: type[FreePanelType], region: rect2) -> FreePanelType:
         if self.__manager is None:
