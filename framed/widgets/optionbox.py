@@ -14,6 +14,7 @@ T = typing.TypeVar("T")
 class OptionBoxAction(enum.Enum):
     edit_cancel = "edit_cancel"
     edit_finish = "edit_finish"
+    edit_backspace = "edit_backspace"
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,8 @@ class OptionBox(FocusHolder, typing.Generic[T]):
     _DEFAULT_BINDINGS: typing.ClassVar[dict[int, OptionBoxAction]] = {
         keys.ESCAPE: OptionBoxAction.edit_cancel,
         keys.ENTER: OptionBoxAction.edit_finish,
-        keys.RETURN: OptionBoxAction.edit_finish
+        keys.RETURN: OptionBoxAction.edit_finish,
+        keys.BACKSPACE: OptionBoxAction.edit_backspace,
     }
 
     __items: list[tuple[str, T | None]]
@@ -137,6 +139,7 @@ class OptionBox(FocusHolder, typing.Generic[T]):
         action = self.__bindings.get(ch)
         # bound actions should override input
         if action:
+            leave = True
             match action:
                 case OptionBoxAction.edit_cancel:
                     self.clear()
@@ -144,8 +147,26 @@ class OptionBox(FocusHolder, typing.Generic[T]):
                     if self.__predicted:
                         self.__selected = self.__predicted[0]
                         self.__emit_change()
-            self._relinquish()
-            self.invalidate()
+                case OptionBoxAction.edit_backspace:
+                    if self.__input:
+                        self.__input = self.__input[:-1]
+                        self.__cursor -= 1
+                        end = min(self.__cursor, self.size[1] - 1)
+                        self._window.move(0, end)
+                        if self.__cursor <= end:
+                            self._window.delch()
+                        if self.__input:
+                            predictions = self.__predict(self.__input)
+                            self.__predicted = predictions[0]
+                            self.__update_prediction()
+                        else:
+                            self.__predicted = None
+                            self._window.clrtoeol()
+                        self._window.refresh()
+                    leave = False
+            if leave:
+                self._relinquish()
+                self.invalidate()
         elif 32 <= ch <= 126:
             letter = chr(ch)
             predictions = self.__predict(self.__input + letter)
@@ -175,21 +196,6 @@ class OptionBox(FocusHolder, typing.Generic[T]):
                     self.__emit_change()
                     self._relinquish()
             return True
-        elif ch == keys.BACKSPACE and self.__input:
-            self.__input = self.__input[:-1]
-            self.__cursor -= 1
-            end = min(self.__cursor, self.size[1] - 1)
-            self._window.move(0, end)
-            if self.__cursor <= end:
-                self._window.delch()
-            if self.__input:
-                predictions = self.__predict(self.__input)
-                self.__predicted = predictions[0]
-                self.__update_prediction()
-            else:
-                self.__predicted = None
-                self._window.clrtoeol()
-            self._window.refresh()
 
         return False
 
