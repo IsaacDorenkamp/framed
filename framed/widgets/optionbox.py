@@ -118,6 +118,28 @@ class OptionBox(FocusHolder, typing.Generic[T]):
         self.__placeholder = placeholder
         self.invalidate()
 
+    # --- Bindings ---
+    def bind(self, key: int, action: OptionBoxAction):
+        self.__bindings[key] = action
+
+    def unbind(self, key: int = -1, action: OptionBoxAction | None = None):
+        if key == -1 and action is None:
+            raise ValueError("Must provide either a key code or an action.")
+        elif key != -1 and action is not None:
+            raise ValueError("Must provide either a key code or an action, not both.")
+
+        if key != -1:
+            if key in self.__bindings:
+                del self.__bindings[key]
+        else:
+            keys = list(self.__bindings.keys())
+            for key in keys:
+                if self.__bindings[key] == action:
+                    del self.__bindings[key]
+
+    def unbind_all(self):
+        self.__bindings.clear()
+
     # --- Widget Implementation ---
     def on_focus(self):
         self.cursor(CursorMode.light)
