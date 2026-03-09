@@ -123,3 +123,5 @@ z = 122
 PGUP = curses.KEY_PPAGE
 PGDN = curses.KEY_NPAGE
 
+PLUS = 43
+

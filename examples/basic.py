@@ -63,6 +63,11 @@ def main(stdscr: curses.window):
                 item_text = list_panel.box.get_item_text(index)
                 list_panel.box.remove_item(index)
                 report_panel.editor.append(f"Removed list item {item_text} (index {index})\n")
+        elif ch == framed.keys.PLUS:
+            index = list_panel.box.get_selection_index()
+            if index >= 0:
+                list_panel.box.insert_item(index, "New Item")
+                report_panel.editor.append(f"Inserted item at index {index}\n")
         else:
             return framed.FocusCapture.passthrough
 

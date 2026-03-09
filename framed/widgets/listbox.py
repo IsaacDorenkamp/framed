@@ -228,6 +228,17 @@ class ListBox(FocusHolder, typing.Generic[T]):
         if self.request_update():
             self.__render_row(len(self.__items) - 1)
 
+    def insert_item(self, index: int, label: str, data: T | None = None):
+        if index < 0 or index > len(self.__items):
+            raise ValueError(f"insert index out of range: {index}")
+
+        self.__items.insert(index, (label, data))
+        if self.request_update():
+            end = min(len(self.__items) - 1, max(0, index - self.__scroll) + index + self.size[0])
+            for row in range(index, end):
+                self.__render_row(row)
+            self._window.refresh()
+
     def remove_item(self, index: int):
         if index < 0 or index >= len(self.__items):
             raise ValueError(f"remove index must be between 0 and {len(self.__items) - 1}, inclusive")
