@@ -1,5 +1,6 @@
 import curses
 import logging
+import random
 
 import framed
 import framed.event
@@ -39,17 +40,42 @@ class ReportPanel(framed.Panel):
         self.editor.append(f"Selected {event.value.label} (index {event.value.index})\n")
 
 
+class MiscPanel(framed.Panel):
+    def __init__(self, region: framed.rect2, owner: framed.Manager):
+        super().__init__(region, owner)
+        self.box = framed.widgets.OptionBox()
+        self.box.add_option("Option A", value="Option A")
+        self.box.add_option("Option B", value="Option B")
+        self.box.add_option("Something Else", value="Something Else")
+        self.box.default = "Something Else"
+        self.box.listen(framed.event.ChangeEvent, self.on_change)
+        self.add(self.box)
+
+    def arrange(self):
+        layout = self.fixed()
+        layout.add(self.box, 2, 5, 1, 15)
+
+    def on_change(self, event: framed.event.ChangeEvent):
+        colors = list(framed.palette.get_color_names())
+        new_color = random.choice(colors)
+        self.box.foreground = new_color
+
+
 def main(stdscr: curses.window):
     framed.palette.setup()
     app = framed.App(stdscr)
     manager = app.multiplex()
 
-    list_split, report_split = manager.split(2, direction=framed.Direction.vertical)
-    manager.set_proportions(path=(), proportions=(3, 1))
+    listbox_split, misc_split = manager.split(2, direction=framed.Direction.horizontal)
+    list_split, report_split = manager.split(2, listbox_split, direction=framed.Direction.vertical)
+    manager.set_proportions(path=(), proportions=(1, 2))
+    manager.set_proportions(path=listbox_split, proportions=(3, 1))
     list_panel = app.new_panel(ListBoxPanel, split_path=list_split)
     report_panel = app.new_panel(ReportPanel, split_path=report_split)
 
     list_panel.box.listen(framed.event.ChangeEvent, report_panel.accept_report)
+
+    misc_panel = app.new_panel(MiscPanel, split_path=misc_split)
 
     def handle_input(ch: int):
         if ch == 3:
@@ -71,6 +97,8 @@ def main(stdscr: curses.window):
                 report_panel.editor.append(f"Inserted item at index {index}\n")
         elif ch == framed.keys.R:
             app.focus(report_panel.editor)
+        elif ch == framed.keys.B:
+            app.focus(misc_panel.box)
         else:
             return framed.FocusCapture.passthrough
 
