@@ -28,6 +28,7 @@ class ReportPanel(framed.Panel):
     def __init__(self, region: framed.rect2, owner: framed.Manager):
         super().__init__(region, owner)
         self.editor = framed.widgets.Editor()
+        self.editor.editable = False
         self.add(self.editor)
 
     def arrange(self):
@@ -68,6 +69,8 @@ def main(stdscr: curses.window):
             if index >= 0:
                 list_panel.box.insert_item(index, "New Item")
                 report_panel.editor.append(f"Inserted item at index {index}\n")
+        elif ch == framed.keys.R:
+            app.focus(report_panel.editor)
         else:
             return framed.FocusCapture.passthrough
 

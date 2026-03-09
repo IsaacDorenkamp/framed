@@ -65,6 +65,7 @@ class Editor(FocusHolder):
     __offset: tuple[int, int]
     __cursor: model.TextLocation
     __mode: EditorMode
+    __editable: bool
 
     __bindings: dict[int, EditorAction]
     __commands: int
@@ -77,13 +78,16 @@ class Editor(FocusHolder):
         self.__offset = 0, 0
         self.__cursor = model.TextLocation(0, 0)
         self.__mode = EditorMode.command
+        self.__editable = True
         self.__bindings = Editor._DEFAULT_BINDINGS.copy()
         self.__commands = 0
         self.__emit_on_key = emit_on_key
 
     def on_focus(self):
-        if not self.has_commands:
+        if not self.has_commands and self.editable:
             self.__mode = EditorMode.edit
+        else:
+            self.__mode = EditorMode.command
 
         self.__adjust_offset()
         self.__position_cursor()
@@ -317,4 +321,14 @@ class Editor(FocusHolder):
     @property
     def has_commands(self) -> bool:
         return self.__commands > 0
+
+    @property
+    def editable(self) -> bool:
+        return self.__editable
+
+    @editable.setter
+    def editable(self, editable: bool):
+        self.__editable = editable
+        if self.__mode == EditorMode.edit:
+            self.__mode = EditorMode.command
 
