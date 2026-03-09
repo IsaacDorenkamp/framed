@@ -114,8 +114,8 @@ def validate(color: str) -> tuple[str, int]:
         raise ColorError(f"No such color: {color}")
 
 
-def get_color_names() -> typing.Iterable[str]:
-    return __colors.keys()
+def get_color_names() -> typing.Generator[str, None, None]:
+    yield from __colors.keys()
 
 
 __all__ = [

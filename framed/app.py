@@ -25,7 +25,6 @@ class FocusCapture(enum.Enum):
 
 
 class FocusState:
-
     __focused: FocusHolder | None
     def __init__(self):
         self.__focused = None
