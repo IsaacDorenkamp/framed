@@ -265,6 +265,11 @@ class ListBox(FocusHolder, typing.Generic[T]):
                 self.__render_row(i)
             self._window.refresh()
 
+    def clear(self):
+        self.__items.clear()
+        self.__selection = -1
+        self.invalidate()
+
     def find_item_by_text(self, text: str) -> int:
         for index, item in enumerate(self.__items):
             if item[0] == text:
