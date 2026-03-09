@@ -46,7 +46,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
     __bindings: dict[int, ListBoxAction]
 
     def __init__(self):
-        super().__init__(greedy=False, enabled_events=[ChangeEvent.tag])
+        super().__init__(enabled_events=[ChangeEvent.tag])
         self.__items = []
         self.__selection = -1
         self.__cursor = -1
