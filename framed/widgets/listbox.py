@@ -139,7 +139,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
             if self.__selection >= self.__scroll + self.size[0]:
                 self.__scroll = self.__selection - self.size[0] + 1
             elif self.__selection < self.__scroll:
-                self.__scroll = self.__selection
+                self.__scroll = max(0, self.__selection)
             else:
                 invalidate = False
         if invalidate:
@@ -161,6 +161,9 @@ class ListBox(FocusHolder, typing.Generic[T]):
             self.__scroll -= 1
 
     def __render_row(self, index: int):
+        if index < 0:
+            return
+
         if (
             index < self.__scroll or
             index >= self.__scroll + self.size[0]
