@@ -6,7 +6,7 @@ import enum
 from .panel import FreePanel, Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
-from .types import Message
+from .typedefs import Message
 from . import util
 
 

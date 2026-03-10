@@ -9,7 +9,7 @@ from .layout.fixed import FixedLayout
 from .layout.flex import FlexLayout
 from .layout.grid import GridLayout
 from .struct import rect2, vec2
-from .types import Message
+from .typedefs import Message
 from .widgets import Widget
 
 
