@@ -8,6 +8,7 @@ class Label(Widget):
     _text: str
     _bold: bool
     _italic: bool
+    _extend: bool
     _underline: bool
     _align: HAlign
 
@@ -17,6 +18,7 @@ class Label(Widget):
         self._bold = False
         self._italic = False
         self._underline = False
+        self._extend = False
         self._align = align
 
     @invalidator
@@ -58,6 +60,16 @@ class Label(Widget):
         self.invalidate()
 
     @property
+    def extend(self) -> bool:
+        return self._extend
+
+    @extend.setter
+    def extend(self, extend: bool):
+        if extend != self._extend:
+            self._extend = extend
+            self.invalidate()
+
+    @property
     def align(self) -> HAlign:
         return self._align
 
@@ -71,10 +83,16 @@ class Label(Widget):
         attr = (curses.A_BOLD if self.bold else 0) | (curses.A_UNDERLINE if self.underline else 0) | (curses.A_ITALIC if self.italic else 0)
         remaining_space = max(0, self.size[1] - len(self._text))
         offset = self._align.get_offset(remaining_space)
-        available = self.size[1] - offset
-        window.move(0, offset)
+        if self.extend:
+            window.move(0, 0)
+            content = self._text.rjust(offset + len(self._text), " ").ljust(self.size[1], " ")
+            space = self.size[1]
+        else:
+            window.move(0, offset)
+            content = self._text
+            space = self.size[1] - offset
         try:
-            window.addnstr(self._text, available, attr)
+            window.addnstr(content, space, attr)
         except curses.error:
             pass
 

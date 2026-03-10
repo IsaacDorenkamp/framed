@@ -2,7 +2,7 @@ from .label import Label
 
 from .widget import FocusHolder, Widget
 from .listbox import ListBoxAction, ListBoxChange, ListBox
-from .optionbox import OptionBox
+from .optionbox import OptionBoxChange, OptionBox
 from .text.editor import EditorAction, EditorMode, Editor
 from .text.model import LineTextModel, SimpleTextModel
 
@@ -13,7 +13,7 @@ __all__ = [
     "ListBoxAction", "ListBoxChange", "ListBox",
 
     # OptionBox
-    "OptionBox",
+    "OptionBoxChange", "OptionBox",
 
     # Editor
     "Editor", "EditorAction", "EditorMode",
