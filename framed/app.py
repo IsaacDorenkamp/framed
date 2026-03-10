@@ -3,6 +3,7 @@ import enum
 import typing
 
 from . import manager
+from .context import Context
 from .manager import Manager, StackManager, MultiplexManager, Direction
 from .panel import FreePanel, Panel
 from .struct import rect2, vec2
@@ -69,9 +70,10 @@ class FocusState:
 
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
+T = typing.TypeVar("T", bound=Context)
 
 
-class App:
+class App(typing.Generic[T]):
     __stdscr: curses.window
     __size: vec2
 
@@ -79,14 +81,16 @@ class App:
     __manager: Manager | None
     __focus: FocusState
     __control_handler: InputHandler | None
+    __context: T
 
-    def __init__(self, stdscr: curses.window):
+    def __init__(self, stdscr: curses.window, context_cls: type[T] = Context):
         self.__stdscr = stdscr
         self.__size = vec2(*stdscr.getmaxyx())
         self.__running = True
         self.__manager = None
         self.__focus = FocusState()
         self.__control_handler = None
+        self.__context = context_cls()
 
     # --- Layout Configuration Methods ---
     def stack(self) -> StackManager:
@@ -189,4 +193,8 @@ class App:
 
     def quit(self):
         self.__running = False
+
+    @property
+    def context(self) -> T:
+        return self.__context
 
