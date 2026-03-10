@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
+from collections import defaultdict
 import curses
 import typing
 
@@ -8,6 +9,7 @@ from .layout.fixed import FixedLayout
 from .layout.flex import FlexLayout
 from .layout.grid import GridLayout
 from .struct import rect2, vec2
+from .types import Message
 from .widgets import Widget
 
 
@@ -22,6 +24,8 @@ class Panel(metaclass=ABCMeta):
     __owner: Manager | None
     __bordered: bool
 
+    __message_handlers: defaultdict[str, list[typing.Callable[[typing.Any], None]]]
+
     def __init__(self, region: rect2, owner: Manager | None = None):
         self.__window = curses.newwin(*region.curses)
         self.__widgets = []
@@ -30,6 +34,8 @@ class Panel(metaclass=ABCMeta):
         self.__valid = False
         self.__owner = owner
         self.__bordered = False
+
+        self.__message_handlers = defaultdict(list)
 
     def add(self, widget: Widget):
         widget._adopt(self)
@@ -157,6 +163,19 @@ class Panel(metaclass=ABCMeta):
     def _adopt(self, owner: Manager):
         self.__owner = owner
 
+    # --- Orchestrating Cross-Panel Responsiveness ---
+    def broadcast(self, name: str, data: typing.Any):
+        self._owner.broadcast(Message(name=name, data=data), exclude=[self])
+
+    def add_message_handler(self, message_type: str, message_handler: typing.Callable[[typing.Any], None]):
+        self.__message_handlers[message_type].append(message_handler)
+
+    def receive(self, message: Message):
+        handlers = self.__message_handlers.get(message.name)
+        if handlers is not None:
+            for handler in handlers:
+                handler(message.data)
+
 
 class FreePanel(Panel):
     @abstractmethod
@@ -175,3 +194,4 @@ class FreePanel(Panel):
 
 if typing.TYPE_CHECKING:
     from .manager import Manager
+

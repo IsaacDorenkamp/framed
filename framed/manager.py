@@ -6,6 +6,7 @@ import enum
 from .panel import FreePanel, Panel
 from .struct import vec2, rect2
 from ._tree import _node, _tree, TreeError
+from .types import Message
 from . import util
 
 
@@ -163,6 +164,10 @@ class Manager(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def broadcast(self, message: Message, exclude: list[Panel] | None = None):
+        pass
+
 
 class StackManager(Manager):
     __panels: list[Panel]
@@ -218,6 +223,12 @@ class StackManager(Manager):
         if self.__showing:
             self.__display()
             self.refresh()
+
+    def broadcast(self, message: Message, exclude: list[Panel] | None = None):
+        exclude = exclude or []
+        for panel in self.__panels:
+            if panel not in exclude:
+                panel.receive(message)
 
 
 class Direction(enum.IntEnum):
@@ -382,6 +393,12 @@ class MultiplexManager(Manager):
         for panel in self.__panels:
             panel.blit()
 
+    def broadcast(self, message: Message, exclude: list[Panel] | None = None):
+        exclude = exclude or []
+        for panel in self.__panels:
+            if panel not in exclude:
+                panel.receive(message)
+
     # --- MultiplexManager-specific methods ---
     def split(self, parts: int, path: tuple[int, ...] | None = None, direction: Direction = Direction.horizontal) -> list[tuple[int, ...]]:
         if path is None:
@@ -416,5 +433,4 @@ class MultiplexManager(Manager):
         if bordered != self.__bordered:
             self.__bordered = bordered
             self.refresh()
-
 
