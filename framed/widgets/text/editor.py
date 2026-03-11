@@ -303,7 +303,7 @@ class Editor(FocusHolder):
 
     def set_text(self, text: str):
         self.__cursor = self.__model.assign(text)
-        self._repaint()
+        self.invalidate()
 
     def append(self, text: str, scroll: bool = True):
         end_line = max(0, self.__model.lines - 1)
