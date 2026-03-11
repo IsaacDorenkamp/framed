@@ -2,6 +2,7 @@ import curses
 import enum
 
 from .. import keys
+from .. import palette
 from ..struct import vec2
 from ..event import ActionEvent
 from .widget import FocusHolder
@@ -22,12 +23,14 @@ class Button(FocusHolder):
     __bordered: bool
     __bindings: dict[int, ButtonAction]
     __focus_attr: int
+    __focus_fg: str
 
     def __init__(self, text: str, bordered: bool = True):
         super().__init__(greedy=False, enabled_events=[ActionEvent.tag])
         self.__text = text
         self.__bordered = bordered
         self.__focus_attr = 0
+        self.__focus_fg = "default"
         self.__bindings = Button._DEFAULT_BINDINGS.copy()
 
     # --- Widget Implementation ---
@@ -49,19 +52,28 @@ class Button(FocusHolder):
         return False
 
     def render(self):
-        # TODO: gracefully handle edge case where bordered is true,
-        # but the button is too small to render
+        focus_color = palette.color_pair(self.__focus_fg, "default")
         if self.__bordered:
+            if self._focused:
+                self._window.attron(focus_color)
             self._window.box()
+            if self._focused:
+                self._window.attroff(focus_color)
             offset = (1, 1)
-            width = self.size[1] - 2
+            width = max(0, self.size[1] - 2)
+            if (
+                offset[0] >= self.size[0] or
+                offset[1] >= width - 1
+            ):
+                # button is too small to render
+                return
         else:
             offset = (0, 0)
             width = self.size[1]
 
         self._window.move(*offset)
         try:
-            self._window.addnstr(self.__text, width, self.__focus_attr if self.focused else 0)
+            self._window.addnstr(self.__text, width, (self.__focus_attr | palette.color_pair(self.__focus_fg, "default")) if self.focused else 0)
         except curses.error:
             pass
 
@@ -141,6 +153,16 @@ class Button(FocusHolder):
         else:
             self.__focus_attr &= ~curses.A_ITALIC
 
+        if self._focused:
+            self.invalidate()
+
+    @property
+    def focus_foreground(self):
+        return self.__focus_fg
+
+    @focus_foreground.setter
+    def focus_foreground(self, foreground: str):
+        self.__focus_fg = foreground
         if self._focused:
             self.invalidate()
 
