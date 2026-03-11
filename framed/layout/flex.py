@@ -47,8 +47,9 @@ class FlexLayout(Layout):
             offset = vec2()
 
         total_rows = max(self.__rows.keys()) + 1  # rows start at 0
+        row_minimums = [max([item.widget.min_size.y if item.widget else 1 for item in self.__rows[index].items] or [1]) if index in self.__rows else 1 for index in range(total_rows)]
         row_weights = [(self.__rows[row].weight if row in self.__rows else 0) for row in range(total_rows)]
-        row_heights = util.distribute(self.window_size.y, row_weights)
+        row_heights = util.distribute(self.window_size.y, row_weights, row_minimums)
 
         y_offset = offset.y
         for row, height in enumerate(row_heights):
@@ -58,7 +59,8 @@ class FlexLayout(Layout):
                 continue
 
             column_weights = [item.weight for item in row_info.items]
-            column_widths = util.distribute(self.window_size.x, column_weights)
+            minimums = [item.widget.min_size.x if item.widget else 1 for item in row_info.items]
+            column_widths = util.distribute(self.window_size.x, column_weights, minimums)
             x_offset = offset.x
             for column, item in enumerate(row_info.items):
                 width = column_widths[column]

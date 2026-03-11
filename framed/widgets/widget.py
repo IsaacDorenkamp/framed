@@ -192,6 +192,22 @@ class Widget(metaclass=ABCMeta):
 
         return current
 
+    # --- Layout Preferences ---
+    @property
+    def min_size(self) -> vec2:
+        """
+        The minimum preferred size of the widget. Layouts will make an effort
+        to keep a widget larger than, or equal to, this size; however, if this
+        is not an absolute guarantee. Widgets should be designed to render
+        without errors at any size, but it may be the case that it will appear
+        incomplete or broken when smaller than this size.
+
+        Further, if this value changes as a result of some other method (for
+        example, set_text() on a Label), the layout will not automatically
+        adjust. The developer must manually invoke the layout.
+        """
+        return vec2(1, 1)
+
     # --- Event Logic ---
     def listen(self, event_type: type[EventType], handler: EventHandler[EventType]):
         if event_type.tag not in self.__enabled_events:

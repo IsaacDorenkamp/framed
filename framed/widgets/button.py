@@ -2,6 +2,7 @@ import curses
 import enum
 
 from .. import keys
+from ..struct import vec2
 from ..event import ActionEvent
 from .widget import FocusHolder
 
@@ -63,6 +64,10 @@ class Button(FocusHolder):
             self._window.addnstr(self.__text, width, self.__focus_attr if self.focused else 0)
         except curses.error:
             pass
+
+    @property
+    def min_size(self):
+        return vec2(3, len(self.__text) + 2) if self.__bordered else vec2(1, len(self.__text))
 
     # --- Bindings ---
     def bind(self, key: int, action: ButtonAction):

@@ -1,6 +1,7 @@
 import curses
 
 from ..const import HAlign
+from ..struct import vec2
 from .widget import Widget, invalidator
 
 
@@ -95,4 +96,8 @@ class Label(Widget):
             window.addnstr(content, space, attr)
         except curses.error:
             pass
+
+    @property
+    def min_size(self):
+        return vec2(1, len(self._text))
 
