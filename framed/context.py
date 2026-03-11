@@ -7,11 +7,12 @@ T = typing.TypeVar("T")
 
 
 class ContextRef(typing.Generic[T]):
-    __handlers: list[typing.Callable[[T], None]]
+    __handlers: list[typing.Callable[[T], typing.Any]]
     __ptr: ContextValue[T]
 
     def __init__(self, pointer: ContextValue[T], _: type[T]):
         self.__ptr = pointer
+        self.__handlers = []
         pointer._listeners.add(self)
 
     def set(self, value: T):
@@ -19,6 +20,9 @@ class ContextRef(typing.Generic[T]):
 
     def get(self) -> T:
         return self.__ptr._value
+
+    def handle(self, handler: typing.Callable[[T], typing.Any]):
+        self.__handlers.append(handler)
 
     def _notify(self):
         for handler in self.__handlers:
