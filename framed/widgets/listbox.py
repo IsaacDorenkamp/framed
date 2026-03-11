@@ -312,7 +312,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
             return None
         return self.__items[self.__selection][1]
 
-    def set_selection(self, index: int):
+    def set_selection(self, index: int, notify: bool = False):
         if index == self.__selection:
             return
 
@@ -327,4 +327,11 @@ class ListBox(FocusHolder, typing.Generic[T]):
             self.__render_row(previous)
             self.__render_row(self.__selection)
             self._window.refresh()
+
+        if notify:
+            if self.__selection > 0:
+                selection = self.__items[self.__selection]
+                self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T](selection[0], self.__selection, selection[1])))
+            else:
+                self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T]("", -1, None)))
 

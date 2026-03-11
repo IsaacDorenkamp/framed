@@ -75,20 +75,24 @@ class OptionBox(FocusHolder, typing.Generic[T]):
     def add_option(self, text: str, value: T | None = None):
         self.__items.append((text, value))
 
-    def set_option_text(self, text: str):
+    def set_option_text(self, text: str, notify: bool = False):
         option = next((index for index, item in enumerate(self.__items) if item[0] == text), None)
         if option is None:
             raise ValueError(f"No option with text '{text}'")
+        self.__set_selection(option, notify)
 
-        self.__selected = option
-        self.invalidate()
-
-    def set_option(self, value: T):
+    def set_option(self, value: T, notify: bool = False):
         option = next((index for index, item in enumerate(self.__items) if item[1] == value), None)
         if option is None:
             raise ValueError(f"No option with value '{value}'")
+        self.__set_selection(option, notify)
 
-        self.__selected = option
+    def __set_selection(self, index: int, notify: bool):
+        if self.__selected == index:
+            return
+        self.__selected = index
+        if notify:
+            self.__emit_change()
         self.invalidate()
 
     def clear(self):
