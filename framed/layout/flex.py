@@ -11,7 +11,7 @@ from .. import util
 @dataclass
 class _FlexItem:
     weight: int
-    widget: Widget
+    widget: Widget | None
 
 
 @dataclass
@@ -31,6 +31,9 @@ class FlexLayout(Layout):
 
     def add(self, widget: Widget, row: int, weight: int = 0):
         self.__rows[row].items.append(_FlexItem(weight=weight, widget=widget))
+
+    def add_spacer(self, row: int, weight: int = 0):
+        self.__rows[row].items.append(_FlexItem(weight=weight, widget=None))
 
     def set_row_weight(self, row: int, weight: int):
         self.__rows[row].weight = weight
@@ -59,8 +62,9 @@ class FlexLayout(Layout):
             x_offset = offset.x
             for column, item in enumerate(row_info.items):
                 width = column_widths[column]
-                self.__regions[item.widget] = rect2(y=y_offset, x=x_offset, h=height, w=width)
-                item.widget.set_size(vec2(height, width))
+                if item.widget is not None:
+                    self.__regions[item.widget] = rect2(y=y_offset, x=x_offset, h=height, w=width)
+                    item.widget.set_size(vec2(height, width))
                 x_offset += width
             y_offset += height
 
