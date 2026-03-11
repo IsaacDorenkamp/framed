@@ -12,9 +12,13 @@ class ContextRef(typing.Generic[T]):
 
     def __init__(self, pointer: ContextValue[T], _: type[T]):
         self.__ptr = pointer
+        pointer._listeners.add(self)
 
     def set(self, value: T):
         self.__ptr.set(value)
+
+    def get(self) -> T:
+        return self.__ptr._value
 
     def _notify(self):
         for handler in self.__handlers:
@@ -24,21 +28,21 @@ class ContextRef(typing.Generic[T]):
 class ContextValue(typing.Generic[T]):
     _value: T
     _type: type[T]
-    __listeners: weakref.WeakSet[ContextRef[T]]
+    _listeners: weakref.WeakSet[ContextRef[T]]
     def __init__(self, initial: T, type_: type[T]):
         self._value = initial
-        self.__type = type_
-        self.__listeners = weakref.WeakSet()
+        self._type = type_
+        self._listeners = weakref.WeakSet()
 
     def set(self, value: T):
         if value != self._value:
             self._value = value
-            for listener in self.__listeners:
+            for listener in self._listeners:
                 listener._notify()
 
     @property
     def type(self) -> type[T]:
-        return self.__type
+        return self._type
 
 
 class Context:
