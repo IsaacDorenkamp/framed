@@ -1,5 +1,7 @@
+import asyncio
 import curses
 import enum
+import inspect
 import typing
 
 from . import manager
@@ -8,6 +10,7 @@ from .manager import Manager, StackManager, MultiplexManager, Direction
 from .panel import FreePanel, Panel
 from .struct import rect2, vec2
 from .widgets import FocusHolder
+from . import task
 from . import _log
 
 
@@ -83,6 +86,8 @@ class App(typing.Generic[T]):
     __control_handler: InputHandler | None
     __context: T
 
+    __tasks: task.TaskManager
+
     def __init__(self, stdscr: curses.window, context_cls: type[T] = Context):
         self.__stdscr = stdscr
         self.__size = vec2(*stdscr.getmaxyx())
@@ -91,6 +96,7 @@ class App(typing.Generic[T]):
         self.__focus = FocusState()
         self.__control_handler = None
         self.__context = context_cls()
+        self.__tasks = task.TaskManager()
 
     # --- Layout Configuration Methods ---
     def stack(self) -> StackManager:
@@ -148,6 +154,18 @@ class App(typing.Generic[T]):
 
         return self.__manager.get_centered_region(h, w)
 
+    # --- Concurrency ---
+    def task(self, fn: typing.Callable, fn_args: tuple, fn_kwargs: dict[str, typing.Any]) -> int:
+        if inspect.iscoroutinefunction(fn):
+            return self.__tasks.dispatch_coroutine(fn(*fn_args, **fn_kwargs))
+        elif inspect.isasyncgenfunction(fn):
+            return self.__tasks.dispatch_generator(fn(*fn_args, **fn_kwargs))
+        elif inspect.isfunction(fn):
+            threaded = asyncio.to_thread(fn(*fn_args, **fn_kwargs))
+            return self.__tasks.dispatch_coroutine(threaded)
+        else:
+            raise TypeError("fn must be a coroutine function, an async generator, or a regular function.")
+
     # --- Mainloop ---
     def run(self):
         _log.info("Running application")
@@ -161,35 +179,38 @@ class App(typing.Generic[T]):
             self.__manager.set_screen_size(self.__size)
             self.__manager.refresh()
 
-        while self.__running:
-            manager_flags = self.__manager.check_flags() if self.__manager else 0
-            if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
-                self.__focus.check()
-            self.__focus.update()
+        try:
+            while self.__running:
+                manager_flags = self.__manager.check_flags() if self.__manager else 0
+                if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
+                    self.__focus.check()
+                self.__focus.update()
 
-            ch = self.__stdscr.getch()
-            if ch == -1:
-                continue
-            elif ch == 3:
-                self.quit()
-            elif ch == curses.KEY_RESIZE:
-                if self.__manager is not None:
-                    self.__size = vec2(*self.__stdscr.getmaxyx())
-                    self.__manager.set_screen_size(self.__size)
-                    self.__manager.refresh()
+                ch = self.__stdscr.getch()
+                if ch == -1:
+                    continue
+                elif ch == 3:
+                    self.quit()
+                elif ch == curses.KEY_RESIZE:
+                    if self.__manager is not None:
+                        self.__size = vec2(*self.__stdscr.getmaxyx())
+                        self.__manager.set_screen_size(self.__size)
+                        self.__manager.refresh()
+                        continue
+
+                captured = self.__focus.capture_input(ch)
+                if captured == FocusCapture.capture:
                     continue
 
-            captured = self.__focus.capture_input(ch)
-            if captured == FocusCapture.capture:
-                continue
+                if self.__control_handler:
+                    result = self.__control_handler(ch)
+                    if result is FocusCapture.capture:
+                        continue
 
-            if self.__control_handler:
-                result = self.__control_handler(ch)
-                if result is FocusCapture.capture:
-                    continue
-
-            if captured == FocusCapture.uncaught:
-                self.__focus.on_input(ch)
+                if captured == FocusCapture.uncaught:
+                    self.__focus.on_input(ch)
+        finally:
+            self.__tasks.close()
 
     def quit(self):
         self.__running = False
