@@ -109,7 +109,7 @@ class App(typing.Generic[T]):
         if self.__manager is None:
             raise AppError("No manager assigned!")
         
-        new_panel = panel_type(region=rect2(0, 0, *self.__size), owner=self.__manager)
+        new_panel = panel_type(region=rect2(0, 0, *self.__size), owner=self.__manager, root=self)
         self.__manager.add_panel(new_panel, *mgr_args, **mgr_kwargs)
         return new_panel
 
@@ -131,7 +131,7 @@ class App(typing.Generic[T]):
         if self.__manager is None:
             raise AppError("No manager assigned!")
 
-        new_panel = panel_type(region=region, owner=self.__manager)
+        new_panel = panel_type(region=region, owner=self.__manager, root=self)
         self.__manager.add_free_panel(new_panel)
         return new_panel
 

@@ -10,8 +10,8 @@ import framed.widgets
 
 
 class ListBoxPanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.box = framed.widgets.ListBox()
         self.box.bind(framed.keys.j, framed.widgets.ListBoxAction.nav_down)
         self.box.bind(framed.keys.k, framed.widgets.ListBoxAction.nav_up)
@@ -26,8 +26,8 @@ class ListBoxPanel(framed.Panel):
 
 
 class ReportPanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.editor = framed.widgets.Editor()
         self.editor.editable = False
         self.add(self.editor)
@@ -41,8 +41,8 @@ class ReportPanel(framed.Panel):
 
 
 class MiscPanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.box = framed.widgets.OptionBox()
         self.box.add_option("Option A", value="Option A")
         self.box.add_option("Option B", value="Option B")
@@ -53,7 +53,7 @@ class MiscPanel(framed.Panel):
 
     def arrange(self):
         layout = self.fixed()
-        layout.add(self.box, 2, 5, 1, 5)
+        layout.add(self.box, 2, 5, 1, 15)
 
     def on_change(self, event: framed.event.ChangeEvent):
         colors = list(framed.palette.get_color_names())

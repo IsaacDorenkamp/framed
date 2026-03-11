@@ -1,5 +1,6 @@
 import curses
 
+import framed
 from framed.app import FocusCapture
 from framed.const import HAlign
 import framed.event
@@ -10,8 +11,8 @@ import framed.widgets
 
 
 class TitlePanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.title = framed.widgets.Label("Untitled")
         self.title.italic = True
         self.add(self.title)
@@ -36,8 +37,8 @@ class TitlePanel(framed.Panel):
 
 
 class NotepadPanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.editor = framed.widgets.Editor()
         self.add(self.editor)
 
@@ -47,8 +48,8 @@ class NotepadPanel(framed.Panel):
 
 
 class StatusPanel(framed.Panel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.status = framed.widgets.Label("Ready")
         self.status.foreground = "green"
         self.add(self.status)
@@ -59,8 +60,8 @@ class StatusPanel(framed.Panel):
 
 
 class OpenDialog(framed.FreePanel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.bordered = True
 
         self.label = framed.widgets.Label("Open: ", align=HAlign.RIGHT)
@@ -86,8 +87,8 @@ class OpenDialog(framed.FreePanel):
 
 
 class SaveDialog(framed.FreePanel):
-    def __init__(self, region: framed.rect2, owner: framed.Manager):
-        super().__init__(region, owner)
+    def __init__(self, region: framed.rect2, owner: framed.Manager, root: framed.App):
+        super().__init__(region, owner, root)
         self.bordered = True
 
         self.label = framed.widgets.Label("Save: ", align=HAlign.RIGHT)

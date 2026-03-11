@@ -4,6 +4,7 @@ from collections import defaultdict
 import curses
 import typing
 
+from .context import Context
 from .layout import Layout
 from .layout.fixed import FixedLayout
 from .layout.flex import FlexLayout
@@ -11,6 +12,9 @@ from .layout.grid import GridLayout
 from .struct import rect2, vec2
 from .typedefs import Message
 from .widgets import Widget
+
+
+ContextType = typing.TypeVar("ContextType", bound=Context)
 
 
 class Panel(metaclass=ABCMeta):
@@ -21,17 +25,19 @@ class Panel(metaclass=ABCMeta):
     __position: vec2
     __layout: Layout
     __valid: bool
+    __root: App
     __owner: Manager | None
     __bordered: bool
 
     __message_handlers: defaultdict[str, list[typing.Callable[[typing.Any], None]]]
 
-    def __init__(self, region: rect2, owner: Manager | None = None):
+    def __init__(self, region: rect2, owner: Manager, root: App):
         self.__window = curses.newwin(*region.curses)
         self.__widgets = []
         self.__size, self.__position = region.decompose()
         self.__layout = FixedLayout()
         self.__valid = False
+        self.__root = root
         self.__owner = owner
         self.__bordered = False
 
@@ -157,6 +163,10 @@ class Panel(metaclass=ABCMeta):
     def owned(self) -> bool:
         return self.__owner is not None
 
+    @property
+    def root(self) -> App:
+        return self.__root
+
     def _orphan(self):
         self.__owner = None
 
@@ -193,5 +203,6 @@ class FreePanel(Panel):
 
 
 if typing.TYPE_CHECKING:
+    from .app import App
     from .manager import Manager
 
