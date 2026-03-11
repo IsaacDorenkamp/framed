@@ -324,10 +324,10 @@ class MultiplexManager(Manager):
                 if split.direction == Direction.horizontal:
                     for y in range(child.region.h):
                         self._stdscr.move(child.region.y + y, child.region.x - 1)
-                        self._stdscr.addch("\u2502")
+                        self._stdscr.addch("\u2502", curses.A_DIM)
                 else:
                     self._stdscr.move(child.region.y - 1, child.region.x)
-                    self._stdscr.addnstr("\u2500" * child.region.w, child.region.w)
+                    self._stdscr.addnstr("\u2500" * child.region.w, child.region.w, curses.A_DIM)
 
         self._stdscr.noutrefresh()
 
