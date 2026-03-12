@@ -177,7 +177,9 @@ class App(typing.Generic[T]):
     def __update_tasks(self):
         result = self.__tasks.pull()
         while result:
-            if self.__task_callback:
+            if isinstance(result, task.TaskResult):
+                result.process(result.data)
+            elif self.__task_callback:
                 self.__task_callback(*result)
             result = self.__tasks.pull()
 

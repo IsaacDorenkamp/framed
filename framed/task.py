@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 import enum
 import threading
 import typing
@@ -13,6 +14,12 @@ class TaskStatus(enum.Enum):
     success = enum.auto()
     failure = enum.auto()
     custom  = enum.auto()
+
+
+@dataclass(frozen=True)
+class TaskResult(typing.Generic[T]):
+    data: T
+    process: typing.Callable[[T], typing.Any]
 
 
 class TaskManager:
