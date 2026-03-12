@@ -2,8 +2,8 @@ import asyncio
 import enum
 import threading
 import typing
-
-from . import _log
+import queue
+import time
 
 
 T = typing.TypeVar("T")
@@ -17,14 +17,18 @@ class TaskStatus(enum.Enum):
 
 class TaskManager:
     __counter: int
-    __results: asyncio.Queue[tuple[int, TaskStatus, typing.Any]]
+    __pending: queue.Queue[tuple[typing.Callable[[int, typing.Any], typing.Coroutine], int, typing.Any]]
+    __results: queue.Queue[tuple[int, TaskStatus, typing.Any]]
     __thread: threading.Thread | None
+    __running: bool
 
     def __init__(self):
         self.__counter = 0
-        self.__loop = asyncio.new_event_loop()
-        self.__results = asyncio.Queue()
+        self.__pending = queue.Queue()
+        self.__results = queue.Queue()
         self.__thread = None
+        self.__loop = None
+        self.__running = True
 
     async def _wrap_coroutine(self, task_id: int, coro: typing.Coroutine):
         try:
@@ -34,44 +38,64 @@ class TaskManager:
         except BaseException as exc:
             status = TaskStatus.failure
             error = exc
-        await self.__results.put((task_id, status, error))
+        self.__results.put((task_id, status, error))
 
     async def _wrap_async_gen(self, task_id: int, generator: typing.AsyncGenerator):
         try:
             async for new_status in generator:
-                await self.__results.put((task_id, TaskStatus.custom, new_status))
+                self.__results.put((task_id, TaskStatus.custom, new_status))
             status = TaskStatus.success
             error = None
         except BaseException as exc:
             status = TaskStatus.failure
             error = exc
-        await self.__results.put((task_id, status, error))
+        self.__results.put((task_id, status, error))
 
     def dispatch_coroutine(self, coro: typing.Coroutine) -> int:
-        new_id = self.__counter
-        self.__counter += 1
-        self.__loop.create_task(self._wrap_coroutine(new_id, coro))
-        return new_id
+        return self.__dispatch(coro, self._wrap_coroutine)
 
     def dispatch_generator(self, asyncgen: typing.AsyncGenerator):
+        return self.__dispatch(asyncgen, self._wrap_async_gen)
+
+    def __dispatch(self, async_obj: typing.Any, wrapper: typing.Callable[[int, typing.Any], typing.Coroutine]):
         new_id = self.__counter
         self.__counter += 1
-        self.__loop.create_task(self._wrap_async_gen(new_id, asyncgen))
+        if self.__thread is None:
+            self.__start()
+        self.__pending.put_nowait((wrapper, new_id, async_obj))
         return new_id
 
     def __start(self):
-        self.__thread = threading.Thread(target=self.__loop.run_forever)
+        self.__loop = asyncio.new_event_loop()
+        self.__thread = threading.Thread(target=self.__run, args=(self.__loop,))
         self.__thread.start()
 
-    def close(self):
-        if self.__loop.is_running():
-            self.__loop.run_until_complete(self.__loop.shutdown_asyncgens())
-            self.__loop.close()
+    def __run(self, loop):
+        try:
+            loop.run_until_complete(self.__poll(loop))
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
 
-    def reap(self) -> typing.Generator[tuple[int, TaskStatus, typing.Any], None, None]:
-        while not self.__results.empty():
+    async def __poll(self, loop):
+        while self.__running:
             try:
-                yield self.__results.get_nowait()
-            except asyncio.QueueEmpty:
-                break
+                wrapper, new_id, async_obj = self.__pending.get_nowait()
+            except queue.Empty:
+                await asyncio.sleep(0)
+                continue
+            task = wrapper(new_id, async_obj)
+            loop.create_task(task)
+
+    def close(self):
+        self.__running = False
+        if self.__thread is not None:
+            self.__thread.join()
+
+    def pull(self) -> tuple[int, TaskStatus, typing.Any] | None:
+        if self.__results.empty():
+            return None
+        else:
+            result = self.__results.get_nowait()
+            return result
 

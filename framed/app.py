@@ -73,6 +73,7 @@ class FocusState:
 
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
+TaskCallback = typing.Callable[[int, task.TaskStatus, typing.Any], typing.Any]
 T = typing.TypeVar("T", bound=Context)
 
 
@@ -87,6 +88,7 @@ class App(typing.Generic[T]):
     __context: T
 
     __tasks: task.TaskManager
+    __task_callback: TaskCallback | None
 
     def __init__(self, stdscr: curses.window, context_cls: type[T] = Context):
         self.__stdscr = stdscr
@@ -97,6 +99,7 @@ class App(typing.Generic[T]):
         self.__control_handler = None
         self.__context = context_cls()
         self.__tasks = task.TaskManager()
+        self.__task_callback = None
 
     # --- Layout Configuration Methods ---
     def stack(self) -> StackManager:
@@ -155,7 +158,9 @@ class App(typing.Generic[T]):
         return self.__manager.get_centered_region(h, w)
 
     # --- Concurrency ---
-    def task(self, fn: typing.Callable, fn_args: tuple, fn_kwargs: dict[str, typing.Any]) -> int:
+    def task(self, fn: typing.Callable, fn_args: tuple | None = None, fn_kwargs: dict[str, typing.Any] | None = None) -> int:
+        fn_args = fn_args or ()
+        fn_kwargs = fn_kwargs or {}
         if inspect.iscoroutinefunction(fn):
             return self.__tasks.dispatch_coroutine(fn(*fn_args, **fn_kwargs))
         elif inspect.isasyncgenfunction(fn):
@@ -165,6 +170,16 @@ class App(typing.Generic[T]):
             return self.__tasks.dispatch_coroutine(threaded)
         else:
             raise TypeError("fn must be a coroutine function, an async generator, or a regular function.")
+
+    def set_task_callback(self, callback: TaskCallback):
+        self.__task_callback = callback
+
+    def __update_tasks(self):
+        result = self.__tasks.pull()
+        while result:
+            if self.__task_callback:
+                self.__task_callback(*result)
+            result = self.__tasks.pull()
 
     # --- Mainloop ---
     def run(self):
@@ -179,12 +194,16 @@ class App(typing.Generic[T]):
             self.__manager.set_screen_size(self.__size)
             self.__manager.refresh()
 
+        import time
+
         try:
             while self.__running:
+                time.sleep(0.05)
                 manager_flags = self.__manager.check_flags() if self.__manager else 0
                 if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
                     self.__focus.check()
                 self.__focus.update()
+                self.__update_tasks()
 
                 ch = self.__stdscr.getch()
                 if ch == -1:
