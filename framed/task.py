@@ -39,13 +39,12 @@ class TaskManager:
 
     async def _wrap_coroutine(self, task_id: int, coro: typing.Coroutine):
         try:
-            await coro
+            result = await coro
             status = TaskStatus.success
-            error = None
         except BaseException as exc:
             status = TaskStatus.failure
-            error = exc
-        self.__results.put((task_id, status, error))
+            result = exc
+        self.__results.put((task_id, status, result))
 
     async def _wrap_async_gen(self, task_id: int, generator: typing.AsyncGenerator):
         try:
