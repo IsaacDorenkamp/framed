@@ -9,8 +9,17 @@ T = typing.TypeVar("T")
 
 class MutationValue(typing.Generic[T]):
     value: T
+    __cancelled: bool
     def __init__(self, value: T):
         self.value = value
+        self.__cancelled = False
+
+    def cancel(self):
+        self.__cancelled = True
+
+    @property
+    def cancelled(self) -> bool:
+        return self.__cancelled
 
 
 class ContextRef(typing.Generic[T]):
@@ -39,7 +48,8 @@ class ContextRef(typing.Generic[T]):
         try:
             value = MutationValue(self.__ptr._value)
             yield value
-            self.set(value.value)
+            if not value.cancelled:
+                self.set(value.value)
         finally:
             self.__ptr._mutating = False
 
