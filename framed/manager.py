@@ -242,6 +242,7 @@ class Split:
     panel_index: int
     region: rect2
     direction: Direction
+    min_size: int = 1
 
 
 class MultiplexManager(Manager):
@@ -280,7 +281,8 @@ class MultiplexManager(Manager):
         if self.__bordered:
             directional_space -= max(0, len(split_node.children) - 1)
         weights = [child.value.portion for child in split_node.children]
-        sizes = util.distribute(directional_space, weights)
+        minimums = [child.value.min_size for child in split_node.children]
+        sizes = util.distribute(directional_space, weights, minimums)
         if any(x == 0 for x in sizes):
             return
 
@@ -423,6 +425,10 @@ class MultiplexManager(Manager):
 
         for child, portion in zip(node.children, proportions):
             child.value.portion = portion
+
+    def set_min_size(self, path: tuple[int, ...], min_size: int):
+        node = self.__splits.get_node(path)
+        node.value.min_size = min_size
 
     @property
     def bordered(self) -> bool:
