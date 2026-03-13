@@ -1,9 +1,16 @@
 from __future__ import annotations
+import contextlib
 import typing
 import weakref
 
 
 T = typing.TypeVar("T")
+
+
+class MutationValue(typing.Generic[T]):
+    value: T
+    def __init__(self, value: T):
+        self.value = value
 
 
 class ContextRef(typing.Generic[T]):
@@ -24,25 +31,38 @@ class ContextRef(typing.Generic[T]):
     def handle(self, handler: typing.Callable[[T], typing.Any]):
         self.__handlers.append(handler)
 
+    @contextlib.contextmanager
+    def mutate(self) -> typing.Generator[MutationValue[T], None, None]:
+        if self.__ptr._mutating:
+            raise RuntimeError("Already mutating this ref's value!")
+        self.__ptr._mutating = True
+        try:
+            value = MutationValue(self.__ptr._value)
+            yield value
+            self.set(value.value)
+        finally:
+            self.__ptr._mutating = False
+
     def _notify(self):
         for handler in self.__handlers:
             handler(self.__ptr._value)
 
 
 class ContextValue(typing.Generic[T]):
+    _mutating: bool
     _value: T
     _type: type[T]
     _listeners: weakref.WeakSet[ContextRef[T]]
     def __init__(self, initial: T, type_: type[T]):
+        self._mutating = False
         self._value = initial
         self._type = type_
         self._listeners = weakref.WeakSet()
 
     def set(self, value: T):
-        if value != self._value:
-            self._value = value
-            for listener in self._listeners:
-                listener._notify()
+        self._value = value
+        for listener in self._listeners:
+            listener._notify()
 
     @property
     def type(self) -> type[T]:
@@ -81,4 +101,13 @@ class Context:
         if not isinstance(value, var.type):
             raise TypeError(f"value '{value}' (type {type(value)}) does not match type {var.type}")
         var.set(value)
+
+    @contextlib.contextmanager
+    def mutate(self, attr: str) -> typing.Generator[MutationValue, None, None]:
+        if attr not in self.__vars:
+            raise AttributeError(f"no such context var {attr}")
+        var = self.__vars[attr]
+        ref = ContextRef(var, var._type)
+        with ref.mutate() as m:
+            yield m
 
