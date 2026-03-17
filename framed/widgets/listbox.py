@@ -230,6 +230,7 @@ class ListBox(FocusHolder, typing.Generic[T]):
         self.__items.append((label, data))
         if self.request_update():
             self.__render_row(len(self.__items) - 1)
+            self._window.refresh()
 
     def insert_item(self, index: int, label: str, data: T | None = None):
         if index < 0 or index > len(self.__items):
