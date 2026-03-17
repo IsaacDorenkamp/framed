@@ -45,11 +45,14 @@ class ContextRef(typing.Generic[T]):
         if self.__ptr._mutating:
             raise RuntimeError("Already mutating this ref's value!")
         self.__ptr._mutating = True
+        previous = self.__ptr._value
         try:
             value = MutationValue(self.__ptr._value)
             yield value
             if not value.cancelled:
                 self.set(value.value)
+        except:
+            self.__ptr._value = previous
         finally:
             self.__ptr._mutating = False
 
