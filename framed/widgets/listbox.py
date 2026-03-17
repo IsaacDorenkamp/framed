@@ -300,6 +300,35 @@ class ListBox(FocusHolder, typing.Generic[T]):
 
         return self.__items[index][1]
 
+    def get_item_pair(self, index: int) -> tuple[str, T | None]:
+        if index < 0 or index >= len(self.__items):
+            raise ValueError(f"No item at index '{index}'")
+
+        return self.__items[index]
+
+    def set_item_text(self, index: int, text: str, notify: bool = True):
+        if index < 0 or index >= len(self.__items):
+            raise ValueError(f"No item at index '{index}'")
+
+        value = self.__items[index][1]
+        self.__items[index] = text, value
+
+        if notify and self.__selection == index:
+            self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T](text, index, value)))
+
+        if self.request_update():
+            self.__render_row(index)
+            self._window.refresh()
+
+    def set_item(self, index: int, value: T | None, notify: bool = True):
+        if index < 0 or index >= len(self.__items):
+            raise ValueError(f"No item at index '{index}'")
+
+        text = self.__items[index][0]
+        self.__items[index] = text, value
+        if notify and self.__selection == index:
+            self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T](text, index, value)))
+
     def get_selection_index(self) -> int:
         return self.__selection
 
@@ -335,4 +364,8 @@ class ListBox(FocusHolder, typing.Generic[T]):
                 self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T](selection[0], self.__selection, selection[1])))
             else:
                 self._emit(ChangeEvent[ListBoxChange[T]](self, ListBoxChange[T]("", -1, None)))
+
+    @property
+    def count(self) -> int:
+        return len(self.__items)
 
