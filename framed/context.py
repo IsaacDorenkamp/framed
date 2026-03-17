@@ -53,9 +53,9 @@ class ContextRef(typing.Generic[T]):
                 self.set(value.value)
         except:
             self.__ptr._value = previous
+            raise 
         finally:
             self.__ptr._mutating = False
-
     def _notify(self):
         for handler in self.__handlers:
             handler(self.__ptr._value)
