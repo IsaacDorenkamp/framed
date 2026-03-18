@@ -2,6 +2,7 @@ import asyncio
 import curses
 import enum
 import inspect
+import traceback
 import typing
 
 from . import manager
@@ -88,7 +89,6 @@ class App(typing.Generic[T]):
     __context: T
 
     __tasks: task.TaskManager
-    __task_callback: TaskCallback | None
 
     def __init__(self, stdscr: curses.window, context_cls: type[T] = Context):
         self.__stdscr = stdscr
@@ -99,7 +99,6 @@ class App(typing.Generic[T]):
         self.__control_handler = None
         self.__context = context_cls()
         self.__tasks = task.TaskManager()
-        self.__task_callback = None
 
     # --- Layout Configuration Methods ---
     def stack(self) -> StackManager:
@@ -158,7 +157,7 @@ class App(typing.Generic[T]):
         return self.__manager.get_centered_region(h, w)
 
     # --- Concurrency ---
-    def task(self, fn: typing.Callable, fn_args: tuple | None = None, fn_kwargs: dict[str, typing.Any] | None = None) -> int:
+    def task(self, fn: typing.Callable, fn_args: tuple | None = None, fn_kwargs: dict[str, typing.Any] | None = None) -> task.Task:
         fn_args = fn_args or ()
         fn_kwargs = fn_kwargs or {}
         if inspect.iscoroutinefunction(fn):
@@ -171,18 +170,12 @@ class App(typing.Generic[T]):
         else:
             raise TypeError("fn must be a coroutine function, an async generator, or a regular function.")
 
-    def set_task_callback(self, callback: TaskCallback):
-        self.__task_callback = callback
-
     def __update_tasks(self):
-        result = self.__tasks.pull()
-        while result:
-            task_id, task_status, task_result = result
-            if isinstance(task_result, task.TaskResult):
-                task_result.process(task_result.data)
-            elif self.__task_callback:
-                self.__task_callback(task_id, task_status, task_result)
-            result = self.__tasks.pull()
+        for task in self.__tasks.iter_complete():
+            try:
+                task.fulfill()
+            except BaseException as exc:
+                _log.error("".join(traceback.format_exception(exc)))
 
     # --- Mainloop ---
     def run(self):
