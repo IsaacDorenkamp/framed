@@ -5,6 +5,7 @@ import typing
 
 from ..event.change import ChangeEvent
 from .. import keys
+from ..struct import vec2
 from .widget import CursorMode, FocusHolder
 
 
@@ -302,4 +303,8 @@ class OptionBox(FocusHolder, typing.Generic[T]):
             self.__render_input()
         else:
             self.__render_selected()
+
+    @property
+    def min_size(self) -> vec2:
+        return vec2(1, max(len(item[0]) for item in self.__items) if self.__items else 1)
 
