@@ -13,7 +13,7 @@ def distribute(amount: int, weights: typing.Sequence[int], minimums: typing.Sequ
     num_weights = len(weights)
     total_weight = sum(weights)
     if total_weight == 0:
-        result = [1 for _ in range(num_weights)]
+        result = [minimums[i] for i in range(num_weights)]
         consumed = sum(result)
     else:
         result = [max(minimum, math.floor(amount * (weight / total_weight))) for weight, minimum in zip(weights, minimums)]
