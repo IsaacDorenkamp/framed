@@ -212,8 +212,7 @@ class App(typing.Generic[T]):
             while self.__running:
                 time.sleep(0.05)
 
-                # since event handlers may modify widgets, we want to store the
-                # cursor state and hide it
+                self.__update_tasks()
                 manager_flags = self.__manager.check_flags() if self.__manager else 0
                 if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
                     self.__focus.check()
