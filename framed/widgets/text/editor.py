@@ -22,6 +22,8 @@ class EditorAction(enum.Enum):
     nav_right = "nav_right"
     nav_up = "nav_up"
     nav_down = "nav_down"
+    nav_page_up = "nav_page_up"
+    nav_page_down = "nav_page_down"
     nav_unfocus = "nav_unfocus"
 
     edit_backspace = "edit_backspace"
@@ -53,6 +55,8 @@ class Editor(FocusHolder):
         keys.RIGHT: EditorAction.nav_right,
         keys.UP: EditorAction.nav_up,
         keys.DOWN: EditorAction.nav_down,
+        keys.PGDN: EditorAction.nav_page_down,
+        keys.PGUP: EditorAction.nav_page_up,
 
         keys.BACKSPACE: EditorAction.edit_backspace,
         keys.DELETE: EditorAction.edit_delete,
@@ -180,6 +184,24 @@ class Editor(FocusHolder):
             case EditorAction.nav_unfocus:
                 self._relinquish()
                 return True
+            case EditorAction.nav_page_up:
+                rows = self.size[0]
+                next_pos = self.__cursor.clone()
+                next_pos.line = max(0, self.__cursor.line - rows)
+                next_pos.col = min(self.__model.get_line_length(next_pos.line), next_pos.col)
+                self.__cursor = next_pos
+                self.__adjust_offset()
+                self._repaint()
+                return True
+            case EditorAction.nav_page_down:
+                rows = self.size[0]
+                next_pos = self.__cursor.clone()
+                next_pos.line = min(self.__model.lines - 1, self.__cursor.line + rows)
+                next_pos.col = min(self.__model.get_line_length(next_pos.line), next_pos.col)
+                self.__cursor = next_pos
+                self.__adjust_offset()
+                self._repaint()
+                return True
 
         return False
 
@@ -300,8 +322,12 @@ class Editor(FocusHolder):
     def get_text(self) -> str:
         return self.__model.get()
 
-    def set_text(self, text: str):
-        self.__cursor = self.__model.assign(text)
+    def set_text(self, text: str, goto_end: bool = False):
+        end = self.__model.assign(text)
+        if goto_end:
+            self.__cursor = end
+        else:
+            self.__cursor = model.TextLocation(line=0, col=0)
         self.invalidate()
 
     def append(self, text: str, scroll: bool = True):
