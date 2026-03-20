@@ -121,7 +121,7 @@ class Widget(metaclass=ABCMeta):
 
     def request_update(self) -> bool:
         if self._parent is not None:
-            return self._parent.request_update()
+            return self.windowed and self._parent.request_update()
 
         return False
 

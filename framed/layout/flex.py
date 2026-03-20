@@ -72,7 +72,7 @@ class FlexLayout(Layout):
 
     def carve(self, widget: Widget, window: curses.window) -> curses.window | None:
         entry = self.__regions.get(widget)
-        if entry is None:
+        if entry is None or entry.w == 0 or entry.h == 0:
             return None
 
         return window.derwin(*entry.curses)
