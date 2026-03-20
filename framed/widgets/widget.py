@@ -227,6 +227,10 @@ class Widget(metaclass=ABCMeta):
             return False
 
     def _emit(self, event: Event):
+        from ..event import queue_event
+        queue_event(event)
+
+    def _process(self, event: Event):
         if event.tag not in self.__enabled_events:
             warnings.warn(f"{self.__class__.__name__} should not emit {event.__class__.tag} events, but one has")
 

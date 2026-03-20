@@ -2,6 +2,7 @@ import asyncio
 import curses
 import enum
 import inspect
+import time
 import traceback
 import typing
 
@@ -11,6 +12,7 @@ from .manager import Manager, StackManager, MultiplexManager, Direction
 from .panel import FreePanel, Panel
 from .struct import rect2, vec2
 from .widgets import FocusHolder
+from . import event
 from . import task
 from . import _log
 
@@ -31,8 +33,10 @@ class FocusCapture(enum.Enum):
 
 class FocusState:
     __focused: FocusHolder | None
+    __keep: int | None
     def __init__(self):
         self.__focused = None
+        self.__keep = None
 
     def set_focused(self, focused: FocusHolder | None):
         if focused == self.__focused:
@@ -45,6 +49,9 @@ class FocusState:
         if self.__focused is not None:
             self.__focused._focused = True
             self.__focused.on_focus()
+
+        if self.__keep is not None:
+            self.__keep = curses.curs_set(0)
 
     def capture_input(self, ch: int) -> FocusCapture:
         if self.__focused is not None and self.__focused.greedy:
@@ -71,6 +78,17 @@ class FocusState:
             if root is None or not root.owned:
                 self.__focused._focused = False
                 self.__focused = None
+
+    def keep(self):
+        if self.__focused:
+            self.__keep = curses.curs_set(0)
+
+    def restore(self):
+        if self.__keep is not None:
+            curses.curs_set(self.__keep)
+            if self.__focused:
+                self.__focused.on_focus()
+                self.__focused.invalidate()
 
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
@@ -190,16 +208,18 @@ class App(typing.Generic[T]):
             self.__manager.set_screen_size(self.__size)
             self.__manager.refresh()
 
-        import time
-
         try:
             while self.__running:
                 time.sleep(0.05)
+
+                # since event handlers may modify widgets, we want to store the
+                # cursor state and hide it
                 manager_flags = self.__manager.check_flags() if self.__manager else 0
                 if (manager_flags & manager.FLAG_CHECK_FOCUS) != 0:
                     self.__focus.check()
                 self.__focus.update()
-                self.__update_tasks()
+
+                event.process_events()
 
                 ch = self.__stdscr.getch()
                 if ch == -1:
@@ -209,8 +229,10 @@ class App(typing.Generic[T]):
                 elif ch == curses.KEY_RESIZE:
                     if self.__manager is not None:
                         self.__size = vec2(*self.__stdscr.getmaxyx())
+                        self.__focus.keep()
                         self.__manager.set_screen_size(self.__size)
                         self.__manager.refresh()
+                        self.__focus.restore()
                         continue
 
                 captured = self.__focus.capture_input(ch)
