@@ -22,8 +22,8 @@ class EditorAction(enum.Enum):
     nav_right = "nav_right"
     nav_up = "nav_up"
     nav_down = "nav_down"
+    nav_unfocus = "nav_unfocus"
 
-    edit_finish = "edit_finish"
     edit_backspace = "edit_backspace"
     edit_delete = "edit_delete"
     edit_linefeed = "edit_linefeed"
@@ -54,7 +54,6 @@ class Editor(FocusHolder):
         keys.UP: EditorAction.nav_up,
         keys.DOWN: EditorAction.nav_down,
 
-        keys.ESCAPE: EditorAction.edit_finish,
         keys.BACKSPACE: EditorAction.edit_backspace,
         keys.DELETE: EditorAction.edit_delete,
         keys.RETURN: EditorAction.edit_linefeed,
@@ -96,7 +95,7 @@ class Editor(FocusHolder):
 
     def on_unfocus(self):
         self.cursor(CursorMode.hidden)
-        if not self.__emit_on_key:
+        if not self.__emit_on_key and self.__editable:
             self._emit(ChangeEvent[str](self, self.__model.get()))
 
     def __insert(self, ch: int):
@@ -137,9 +136,6 @@ class Editor(FocusHolder):
                         return True
                     except model.TextModelError:
                         return False
-                case EditorAction.edit_finish:
-                    self._relinquish()
-                    return True
 
         return False
 
@@ -181,6 +177,9 @@ class Editor(FocusHolder):
                     self.__adjust_offset()
                     self._repaint()
                     return True
+            case EditorAction.nav_unfocus:
+                self._relinquish()
+                return True
 
         return False
 

@@ -66,7 +66,7 @@ class OpenDialog(framed.FreePanel):
 
         self.label = framed.widgets.Label("Open: ", align=HAlign.RIGHT)
         self.prompt = framed.widgets.Editor(model_cls=framed.widgets.LineTextModel)
-        self.prompt.bind(framed.keys.ENTER, framed.widgets.EditorAction.edit_finish)
+        self.prompt.bind(framed.keys.ENTER, framed.widgets.EditorAction.nav_unfocus)
         self.prompt.unbind(framed.keys.ESCAPE)
 
         self.add(self.label)
@@ -93,7 +93,7 @@ class SaveDialog(framed.FreePanel):
 
         self.label = framed.widgets.Label("Save: ", align=HAlign.RIGHT)
         self.prompt = framed.widgets.Editor(model_cls=framed.widgets.LineTextModel)
-        self.prompt.bind(framed.keys.LF, framed.widgets.EditorAction.edit_finish)
+        self.prompt.bind(framed.keys.LF, framed.widgets.EditorAction.nav_unfocus)
         self.prompt.unbind(framed.keys.ESCAPE)
 
         self.add(self.label)
