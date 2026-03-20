@@ -69,6 +69,13 @@ class Panel(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    def repaint(self):
+        self.__layout.reset()
+        self.arrange()
+        self.reconfigure()
+        self.render()
+        curses.doupdate()
+
     def set_size(self, size: vec2):
         self.__size = size
         self.__valid = False
