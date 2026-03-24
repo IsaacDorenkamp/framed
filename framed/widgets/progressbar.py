@@ -123,10 +123,12 @@ class _determinate(_progressmodel):
 class ProgressBar(Widget, TickHandler):
     __model: _progressmodel
     __determinate: bool
+    __active: bool
 
     def __init__(self, determinate: bool = True):
         super().__init__()
         self.__determinate = determinate
+        self.__active = True
         self.__create_model()
 
     def __create_model(self, value: float = 0.0):
@@ -145,6 +147,18 @@ class ProgressBar(Widget, TickHandler):
         self.__model.tick(dt)
         self.invalidate()
 
+    def set_size(self, size: vec2):
+        super().set_size(size)
+        self.__create_model(self.__model.value)
+
+    def render(self):
+        if self.__active:
+            self._window.move(0, 0)
+            try:
+                self._window.addnstr(self.__model.content, self.size[1])
+            except curses.error:
+                pass
+
     @property
     def value(self) -> float:
         return self.__model.value
@@ -153,14 +167,13 @@ class ProgressBar(Widget, TickHandler):
         self.__model.set_value(value)
         self.invalidate()
 
-    def set_size(self, size: vec2):
-        super().set_size(size)
-        self.__create_model(self.__model.value)
+    @property
+    def active(self) -> bool:
+        return self.__active
 
-    def render(self):
-        self._window.move(0, 0)
-        try:
-            self._window.addnstr(self.__model.content, self.size[1])
-        except curses.error:
-            pass
+    @active.setter
+    def active(self, active: bool):
+        if active != self.__active:
+            self.__active = active
+            self.invalidate()
 
