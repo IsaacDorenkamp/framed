@@ -4,6 +4,7 @@ from collections import defaultdict
 import curses
 import typing
 
+from .clock import TickHandler
 from .context import Context
 from .layout import Layout
 from .layout.fixed import FixedLayout
@@ -45,6 +46,8 @@ class Panel(metaclass=ABCMeta):
 
     def add(self, widget: Widget):
         widget._adopt(self)
+        if isinstance(widget, TickHandler):
+            self.root.add_tick_handler(widget)
         self.__widgets.append(widget)
 
     def reconfigure(self):

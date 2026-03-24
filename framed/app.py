@@ -5,6 +5,7 @@ import inspect
 import time
 import traceback
 import typing
+import weakref
 
 from . import manager
 from .context import Context
@@ -12,6 +13,7 @@ from .manager import Manager, StackManager, MultiplexManager, Direction
 from .panel import FreePanel, Panel
 from .struct import rect2, vec2
 from .widgets import FocusHolder
+from . import clock
 from . import event
 from . import task
 from . import _log
@@ -105,6 +107,8 @@ class App(typing.Generic[T]):
     __focus: FocusState
     __control_handler: InputHandler | None
     __context: T
+    __clock: clock.Clock
+    __tick_handlers: weakref.WeakSet[clock.TickHandler]
 
     __tasks: task.TaskManager
 
@@ -116,6 +120,8 @@ class App(typing.Generic[T]):
         self.__focus = FocusState()
         self.__control_handler = None
         self.__context = context_cls()
+        self.__clock = clock.Clock()
+        self.__tick_handlers = weakref.WeakSet()
         self.__tasks = task.TaskManager()
 
     # --- Layout Configuration Methods ---
@@ -183,7 +189,7 @@ class App(typing.Generic[T]):
         elif inspect.isasyncgenfunction(fn):
             return self.__tasks.dispatch_generator(fn(*fn_args, **fn_kwargs))
         elif inspect.isfunction(fn):
-            threaded = asyncio.to_thread(fn(*fn_args, **fn_kwargs))
+            threaded = asyncio.to_thread(fn, *fn_args, **fn_kwargs)
             return self.__tasks.dispatch_coroutine(threaded)
         else:
             raise TypeError("fn must be a coroutine function, an async generator, or a regular function.")
@@ -194,6 +200,16 @@ class App(typing.Generic[T]):
                 task.fulfill()
             except BaseException as exc:
                 _log.error("".join(traceback.format_exception(exc)))
+
+    # --- Clock ---
+    def add_tick_handler(self, handler: clock.TickHandler):
+        self.__tick_handlers.add(handler)
+
+    def remove_tick_handler(self, handler: clock.TickHandler) -> bool:
+        if handler in self.__tick_handlers:
+            self.__tick_handlers.remove(handler)
+            return True
+        return False
 
     # --- Mainloop ---
     def run(self):
@@ -208,9 +224,11 @@ class App(typing.Generic[T]):
             self.__manager.set_screen_size(self.__size)
             self.__manager.refresh()
 
+        self.__clock.start()
         try:
             while self.__running:
                 time.sleep(0.05)
+                self.__clock.update(self.__tick)
 
                 self.__update_tasks()
                 manager_flags = self.__manager.check_flags() if self.__manager else 0
@@ -247,6 +265,10 @@ class App(typing.Generic[T]):
                     self.__focus.on_input(ch)
         finally:
             self.__tasks.close()
+
+    def __tick(self, dt: int):
+        for handler in self.__tick_handlers:
+            handler.on_tick(dt)
 
     def quit(self):
         self.__running = False

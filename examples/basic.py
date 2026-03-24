@@ -49,11 +49,14 @@ class MiscPanel(framed.Panel):
         self.box.add_option("Something Else", value="Something Else")
         self.box.default = "Something Else"
         self.box.listen(framed.event.ChangeEvent, self.on_change)
+        self.loading = framed.widgets.ProgressBar(determinate=False)
         self.add(self.box)
+        self.add(self.loading)
 
     def arrange(self):
         layout = self.fixed()
         layout.add(self.box, 2, 5, 1, 15)
+        layout.add(self.loading, 4, 5, 1, 100)
 
     def on_change(self, event: framed.event.ChangeEvent):
         colors = list(framed.palette.get_color_names())

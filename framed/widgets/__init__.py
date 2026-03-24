@@ -4,6 +4,7 @@ from .widget import FocusHolder, Widget
 from .button import ButtonAction, Button
 from .listbox import ListBoxAction, ListBoxChange, ListBox
 from .optionbox import OptionBoxChange, OptionBox
+from .progressbar import ProgressBar
 from .text.editor import EditorAction, EditorMode, Editor
 from .text.model import LineTextModel, SimpleTextModel
 
@@ -18,6 +19,9 @@ __all__ = [
 
     # OptionBox
     "OptionBoxChange", "OptionBox",
+
+    # ProgressBar
+    "ProgressBar",
 
     # Editor
     "Editor", "EditorAction", "EditorMode",
