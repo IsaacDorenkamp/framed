@@ -89,8 +89,11 @@ class FocusState:
         if self.__keep is not None:
             curses.curs_set(self.__keep)
             if self.__focused:
-                self.__focused.on_focus()
-                self.__focused.invalidate()
+                if self.__focused.windowed:
+                    pos = self.__focused._window.getyx()
+                    self.__focused._window.move(*pos)
+                    self.__focused._window.refresh()
+            self.__keep = None
 
 
 InputHandler = typing.Callable[[int], FocusCapture | None]
@@ -228,7 +231,10 @@ class App(typing.Generic[T]):
         try:
             while self.__running:
                 time.sleep(0.05)
+
+                self.__focus.keep()
                 self.__clock.update(self.__tick)
+                self.__focus.restore()
 
                 self.__update_tasks()
                 manager_flags = self.__manager.check_flags() if self.__manager else 0
