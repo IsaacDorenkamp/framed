@@ -10,7 +10,11 @@ class InvalidDataError(Exception):
     pass
 
 
-class Model(metaclass=ABCMeta):
+class CannotResizeError(Exception):
+    pass
+
+
+class TableModel(metaclass=ABCMeta):
     @property
     @abstractmethod
     def rows(self) -> int:
@@ -19,6 +23,22 @@ class Model(metaclass=ABCMeta):
     @property
     @abstractmethod
     def columns(self) -> int:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_rows(self, rows: int):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_columns(self, cols: int):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete_row(self, row: int):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete_column(self, col: int):
         raise NotImplementedError()
 
     @abstractmethod
@@ -42,18 +62,15 @@ class Model(metaclass=ABCMeta):
         raise NotImplementedError()
 
 
-class TextModel(Model):
+class TableTextModel(TableModel):
     __data: dict[tuple[int, int], str]
     __rows: int
     __cols: int
 
-    def __init__(self, rows: int, cols: int):
-        if rows <= 0:
-            raise ValueError(f"rows must be positive!")
-        if cols <= 0:
-            raise ValueError(f"cols must be positive!")
-        self.__rows = rows
-        self.__cols = cols
+    def __init__(self):
+        self.__rows = 1
+        self.__cols = 1
+        self.__data = {}
 
     @property
     def rows(self) -> int:
@@ -62,6 +79,39 @@ class TextModel(Model):
     @property
     def columns(self) -> int:
         return self.__cols
+
+    def set_rows(self, rows: int):
+        self.__rows = rows
+        del_keys = [key for key in self.__data.keys() if key[0] >= rows]
+        for key in del_keys:
+            del self.__data[key]
+
+    def set_columns(self, cols: int):
+        self.__cols = cols
+        del_keys = [key for key in self.__data.keys() if key[1] >= cols]
+        for key in del_keys:
+            del self.__data[key]
+
+    def delete_row(self, row: int):
+        if row < 0 or row >= self.__rows:
+            raise OutOfRangeError(f"row out of range: {row}")
+        del_keys = [key for key in self.__data.keys() if key[0] == row]
+        shift_keys = [key for key in self.__data.keys() if key[0] > row]
+        for del_key in del_keys:
+            del self.__data[del_key]
+        for shift_key in shift_keys:
+            self.__data[(shift_key[0] - 1, shift_key[1])] = self.__data.pop(shift_key)
+        self.__rows -= 1
+
+    def delete_column(self, col: int):
+        if col < 0 or col >= self.__cols:
+            raise OutOfRangeError(f"col out of range: {col}")
+        del_keys = [key for key in self.__data.keys() if key[1] == col]
+        shift_keys = [key for key in self.__data.keys() if key[1] > col]
+        for del_key in del_keys:
+            del self.__data[del_key]
+        for shift_key in shift_keys:
+            self.__data[(shift_key[0], shift_key[1] - 1)] = self.__data.pop(shift_key)
 
     def get_data(self, row: int, col: int) -> typing.Any:
         return self.get_text(row, col)

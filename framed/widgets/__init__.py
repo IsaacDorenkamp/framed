@@ -5,6 +5,8 @@ from .button import ButtonAction, Button
 from .listbox import ListBoxAction, ListBoxChange, ListBox
 from .optionbox import OptionBoxChange, OptionBox
 from .progressbar import ProgressBar
+from .table.model import *
+from .table.table import Table
 from .text.editor import EditorAction, EditorMode, Editor
 from .text.model import LineTextModel, SimpleTextModel
 
@@ -25,5 +27,8 @@ __all__ = [
 
     # Editor
     "Editor", "EditorAction", "EditorMode",
-    "LineTextModel", "SimpleTextModel"
+    "LineTextModel", "SimpleTextModel",
+
+    # Table
+    "Table", "TableModel", "TableTextModel",
 ]

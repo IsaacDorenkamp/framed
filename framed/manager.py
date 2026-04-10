@@ -253,7 +253,8 @@ class MultiplexManager(Manager):
 
     def __init__(self, stdscr: curses.window, top_level_split_direction: Direction = Direction.horizontal):
         super().__init__(stdscr)
-        self.__splits = _tree(Split(0, -1, rect2(0, 0, 0, 0), top_level_split_direction))
+        tl_size = stdscr.getmaxyx()
+        self.__splits = _tree(Split(0, -1, rect2(0, 0, tl_size[0], tl_size[1]), top_level_split_direction))
         self.__panels = []
         self.__visible = []
         self.__bordered = True
@@ -272,6 +273,13 @@ class MultiplexManager(Manager):
     def arrange(self, size: vec2):
         base_region = rect2(0, 0, size.y, size.x)
         self.__visible.clear()
+        # special case: root has panel
+        root_entry = self.__splits.get(())
+        if root_entry.panel_index != -1:
+            root_panel = self.__panels[root_entry.panel_index]
+            root_entry.region = base_region
+            root_panel.set_size(vec2(base_region.h, base_region.w))
+            self.__visible.append(self.__panels[root_entry.panel_index])
         self.__arrange_split(self.__splits.root, base_region)
 
     def __arrange_split(self, split_node: _node[Split], region: rect2):
